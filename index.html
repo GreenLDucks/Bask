@@ -101,6 +101,8 @@ textarea{resize:vertical;min-height:64px}
 .guide-detail dd{margin:1px 0 0}
 .status-lc{color:#3f7a52;font-weight:bold}
 .seen-mark{margin-left:auto;font-size:.72rem;color:var(--gold);font-weight:bold;text-align:right}
+.seen-badge{margin-left:auto;width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:var(--green);color:#fff;font-weight:bold;font-size:.95rem;flex-shrink:0;box-shadow:var(--shadow)}
+.seen-badge.house{background:radial-gradient(circle at 35% 30%,#e8d48b,var(--gold));color:#5c4a08;font-size:1rem}
 .badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px}
 .badge{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
   padding:12px 6px;text-align:center;font-size:.7rem;line-height:1.2}
@@ -168,6 +170,12 @@ textarea{resize:vertical;min-height:64px}
 .mf-on{background:var(--green-light);color:var(--green-dark);border:1px solid var(--green)}
 .mf-off{background:#efe8d5;color:var(--ink-soft);border:1px solid var(--line)}
 #homeMap{height:200px;border-radius:10px;border:1px solid var(--line);margin-top:8px;z-index:1}
+#iconModal,#camModal,#successModal{position:fixed;inset:0;z-index:3400;display:none}
+#iconModal.show,#camModal.show{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:16px;background:rgba(25,28,20,.93)}
+#iconBox{position:absolute;border:2px solid #fff;cursor:move;touch-action:none;box-shadow:0 0 0 9999px rgba(0,0,0,.55);border-radius:50%}
+#iconHandle{position:absolute;right:-14px;bottom:-14px;width:28px;height:28px;border-radius:50%;background:var(--gold);border:2.5px solid #fff;cursor:nwse-resize;touch-action:none}
+#successModal.show{display:flex;align-items:center;justify-content:center;padding:16px;background:rgba(20,22,16,.5)}
+#successContent{background:var(--cream);border-radius:16px;max-width:420px;width:100%;padding:20px 18px 22px;box-shadow:var(--shadow)}
 </style>
 </head>
 <body>
@@ -227,7 +235,7 @@ textarea{resize:vertical;min-height:64px}
     <p class="sub" data-i18n="logSub"></p>
     <label class="fld" style="margin-top:6px" data-i18n="photoOptional"></label>
     <div class="photo-row" style="margin-top:0">
-      <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="document.getElementById('camInput').click()">📷 <span data-i18n="takePhoto"></span></button>
+      <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="openCamera()">📷 <span data-i18n="takePhoto"></span></button>
       <button class="btn btn-secondary" onclick="document.getElementById('galInput').click()">🖼️ <span data-i18n="fromGallery"></span></button>
     </div>
     <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
@@ -240,13 +248,13 @@ textarea{resize:vertical;min-height:64px}
     <label class="fld" data-i18n="when"></label>
     <input type="datetime-local" id="logWhen">
     <label class="fld" data-i18n="where"></label>
-    <button class="btn btn-secondary" onclick="pinpointMe()">📍 <span data-i18n="useMyLocation"></span></button>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <label id="mfRow" class="toggle" style="display:none"><input type="checkbox" id="mfToggle" onchange="mfToggleChanged(this.checked)"> <span data-i18n="matrikelfuglOpt"></span></label>
+      <button class="btn btn-secondary" style="margin-left:auto" onclick="pinpointMe()">📍 <span data-i18n="useMyLocation"></span></button>
+    </div>
+    <div id="mfIndicator"></div>
     <div id="locStatus" data-i18n="locHint"></div>
     <div id="miniMap"></div>
-    <div id="mfRow" style="display:none">
-      <label class="pub-row" style="margin-top:10px"><input type="checkbox" id="mfToggle" onchange="mfToggleChanged(this.checked)"> <span data-i18n="matrikelfuglOpt"></span></label>
-      <div id="mfIndicator"></div>
-    </div>
     <label class="fld" data-i18n="notes"></label>
     <textarea id="logNotes"></textarea>
     <label class="pub-row"><input type="checkbox" id="logPublic" checked> <span data-i18n="sharePublic"></span></label>
@@ -255,7 +263,8 @@ textarea{resize:vertical;min-height:64px}
 
   <section class="view" id="view-guide">
     <h2 data-i18n="guide"></h2>
-    <p class="sub" data-i18n="guideSub"></p>
+    <p class="sub" id="guideSub"></p>
+    <input type="text" id="guideSearch" data-i18n-ph="searchSpecies" style="margin-bottom:10px" oninput="guideFilter=this.value.trim();renderGuide()">
     <div id="guideList"></div>
   </section>
 
@@ -325,6 +334,25 @@ textarea{resize:vertical;min-height:64px}
 
 <div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" alt=""></div>
 <div id="matModal" onclick="closeMatrikelDetail()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeMatrikelDetail()">✕</button><div id="matDetailContent"></div></div></div>
+<div id="iconModal">
+  <div id="iconStage" style="position:relative;touch-action:none">
+    <img id="iconImg" alt="" style="display:block;max-width:92vw;max-height:56vh;user-select:none;-webkit-user-drag:none;border-radius:6px">
+    <div id="iconBox"><div id="iconHandle"></div></div>
+  </div>
+  <div class="crop-hint" data-i18n="iconHint"></div>
+  <div class="crop-btns">
+    <button class="btn btn-secondary" style="background:transparent;color:#f7f3e8;border-color:#f7f3e8" onclick="closeIconCrop()" data-i18n="cropCancel"></button>
+    <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="applyIconCrop()" data-i18n="iconApply"></button>
+  </div>
+</div>
+<div id="camModal">
+  <video id="camVideo" autoplay playsinline muted style="width:100%;max-width:640px;border-radius:10px;background:#000"></video>
+  <div class="crop-btns">
+    <button class="btn btn-secondary" style="background:transparent;color:#f7f3e8;border-color:#f7f3e8" onclick="closeCamera()" data-i18n="cropCancel"></button>
+    <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="snapCamera()" data-i18n="capture"></button>
+  </div>
+</div>
+<div id="successModal" onclick="closeSuccess()"><div id="successContent" onclick="event.stopPropagation()"></div></div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -576,7 +604,14 @@ function ordInfo(b){const f=BIRD_FAM[b.id];const o=FAM2ORD[f];const n=ORDERS[o]|
 function birdSVG(fill){
   return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="${fill}" d="M14 40c-4-1-8-4-10-8 3 0 5 0 7-1-3-2-5-6-5-10 2 2 5 3 8 3 2-6 8-11 15-11 8 0 15 6 16 14l12-5-8 10c1 12-8 22-21 22-4 0-8-1-11-3l-8 5 3-8c-2-2-3-5-4-8z" transform="scale(.9) translate(4 4)"/></svg>`;
 }
+function iconUrl(birdId){
+  const v = (typeof iconMap!=='undefined' ? iconMap : {})[birdId];
+  if (!v || !user) return null;
+  return db.storage.from('photos').getPublicUrl(`${user.id}/icon_${birdId}.jpg`).data.publicUrl + '?v=' + v;
+}
 function avatarHTML(bird, cls){
+  const u = iconUrl(bird.id);
+  if (u) return `<div class="avatar ${cls||''}" style="overflow:hidden;padding:0"><img src="${u}" alt="" style="width:100%;height:100%;object-fit:cover"></div>`;
   return `<div class="avatar ${cls||''}" style="background:linear-gradient(135deg,${bird.c2}22,${bird.c1}44)">${birdSVG(bird.c1)}</div>`;
 }
 
@@ -586,7 +621,7 @@ const I18N = {
   map:'Map', mapSub:'Your sightings and shared sightings from other watchers.',
   cadastral:'Cadastral parcels', community:'Community', myLocation:'My location',
   matrikelLayer:'Sightings by parcel', matrikelWord:'Parcel', matSightings:'sightings', matSpecies:'species', matContributors:'contributors',
-  matrikelfuglOpt:'Log as a property bird (matrikelfugl)', mfChip:'Property bird', mfOn:'On your property — will be logged as a property bird', mfOff:'Off your property — logged as a regular sighting',
+  matrikelfuglOpt:'Log as a property bird', mfChip:'Property bird', mfOn:'On your property — will be logged as a property bird', mfOff:'Off your property — logged as a regular sighting',
   homeMatrikel:'Home matrikel (your property)', homeNone:'No home matrikel set.', saveHome:'Save', clearHome:'Clear', homeNotFound:'No parcel found at that point.', homeNote:'Place the pin on your property and save. New sightings then default to “matrikelfugl”, dropping the pin here — drag it away if the sighting was elsewhere.',
   mySightings:'My sightings', otherSightings:'Other watchers',
   newSighting:'New sighting', logSub:'Record a bird observed on your property.',
@@ -594,7 +629,8 @@ const I18N = {
   useMyLocation:'Pinpoint my location', locHint:'Tap the button, then fine-tune by dragging the pin.',
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
-  save:'Save sighting', guide:'Field guide', guideSub:'The 10 most common garden birds in Denmark. Tap a bird for details.',
+  save:'Save sighting', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
+  congrats:'Great shot! Sighting saved.', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
   milestoneBadges:'Milestones', speciesBadges:'Species badges',
   profile:'Profile',
@@ -635,7 +671,8 @@ const I18N = {
   useMyLocation:'Find min placering', locHint:'Tryk på knappen og finjustér ved at trække i nålen.',
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
-  save:'Gem observation', guide:'Felthåndbog', guideSub:'De 10 mest almindelige havefugle i Danmark. Tryk på en fugl for detaljer.',
+  save:'Gem observation', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
+  congrats:'Flot skud! Observation gemt.', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
   milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
   profile:'Profil',
@@ -741,7 +778,8 @@ async function loadCloudData(){
     unlockedBadges = {};
     (bRes.data || []).forEach(r => unlockedBadges[r.badge_id] = r.unlocked_at);
     if (pRes.data){ profileName = pRes.data.display_name || '';
-      homeMatrikel = pRes.data.home_matrikel_id ? {id:pRes.data.home_matrikel_id, label:pRes.data.home_matrikel_label, geojson:pRes.data.home_matrikel_geojson} : null; }
+      homeMatrikel = pRes.data.home_matrikel_id ? {id:pRes.data.home_matrikel_id, label:pRes.data.home_matrikel_label, geojson:pRes.data.home_matrikel_geojson} : null;
+      iconMap = pRes.data.species_icons || {}; }
     else await db.from('profiles').insert({ id: user.id, display_name: '' });
     renderTimeline(); renderBadges(); renderGuide(); updateStats();
     loadCommunity();
@@ -788,6 +826,7 @@ async function backfillMatrikel(){
 
 /* ===== home matrikel + matrikelfugl ===== */
 var homeMatrikel = null, matrikelfuglActive = false, homeMap = null, homeMarker = null, homeMiniLayer = null;
+var iconMap = {};
 function pointInRing(x, y, ring){
   let inside = false;
   for (let i=0, j=ring.length-1; i<ring.length; j=i++){
@@ -934,6 +973,90 @@ async function reconcileMatrikelfugl(){
     renderTimeline(); refreshMapMarkers();
   } catch(e){}
 }
+
+/* ===== custom species icons from user photos ===== */
+var iconCropBird=null;
+const iconBoxState={x:0,y:0,s:100};
+let iconDrag=null;
+function setIconBox(x,y,s){
+  const img=document.getElementById('iconImg'); const W=img.clientWidth,H=img.clientHeight;
+  s=Math.max(40,Math.min(s,Math.min(W,H)));
+  x=Math.max(0,Math.min(x,W-s)); y=Math.max(0,Math.min(y,H-s));
+  Object.assign(iconBoxState,{x,y,s});
+  const bx=document.getElementById('iconBox');
+  bx.style.left=x+'px'; bx.style.top=y+'px'; bx.style.width=s+'px'; bx.style.height=s+'px';
+}
+function openIconCrop(srcDataUrl, birdId){
+  iconCropBird=birdId;
+  const img=document.getElementById('iconImg');
+  document.getElementById('iconModal').classList.add('show');
+  const place=()=>{ const W=img.clientWidth,H=img.clientHeight; const s=Math.min(W,H)*0.8; setIconBox((W-s)/2,(H-s)/2,s); };
+  if(img.src===srcDataUrl && img.complete) place(); else { img.onload=place; img.src=srcDataUrl; }
+}
+function closeIconCrop(){ document.getElementById('iconModal').classList.remove('show'); }
+async function applyIconCrop(){
+  const img=document.getElementById('iconImg'); const sc=img.naturalWidth/img.clientWidth;
+  const size=256, c=document.createElement('canvas'); c.width=size; c.height=size;
+  c.getContext('2d').drawImage(img, iconBoxState.x*sc, iconBoxState.y*sc, iconBoxState.s*sc, iconBoxState.s*sc, 0,0,size,size);
+  const blob=await new Promise(r=>c.toBlob(r,'image/jpeg',.85));
+  if(!blob || !user || !iconCropBird){ closeIconCrop(); return; }
+  const path=`${user.id}/icon_${iconCropBird}.jpg`;
+  const up=await db.storage.from('photos').upload(path, blob, {contentType:'image/jpeg', upsert:true});
+  if(up.error){ toast(up.error.message||'error'); return; }
+  iconMap[iconCropBird]=Date.now();
+  await db.from('profiles').update({species_icons: iconMap}).eq('id', user.id);
+  closeIconCrop();
+  renderTimeline(); renderGuide(); renderSpeciesGrid(); if(map) refreshMapMarkers();
+  toast(t('iconSaved'));
+}
+(function initIconDrag(){
+  const box=document.getElementById('iconBox'), handle=document.getElementById('iconHandle');
+  const start=mode=>e=>{ e.preventDefault(); e.stopPropagation(); iconDrag=Object.assign({mode,px:e.clientX,py:e.clientY}, iconBoxState); if(e.target.setPointerCapture) e.target.setPointerCapture(e.pointerId); };
+  handle.addEventListener('pointerdown', start('resize'));
+  box.addEventListener('pointerdown', e=>{ if(e.target===box) start('move')(e); });
+  document.addEventListener('pointermove', e=>{ if(!iconDrag) return; const dx=e.clientX-iconDrag.px, dy=e.clientY-iconDrag.py; if(iconDrag.mode==='move') setIconBox(iconDrag.x+dx, iconDrag.y+dy, iconDrag.s); else setIconBox(iconDrag.x, iconDrag.y, iconDrag.s+Math.max(dx,dy)); });
+  document.addEventListener('pointerup', ()=>{ iconDrag=null; });
+})();
+async function iconFromSighting(id){
+  const s=sightings.find(x=>x.id===id); if(!s||!s.photo_path) return;
+  try{
+    const blob=await fetch(photoUrl(s.photo_path)).then(r=>r.blob());
+    const dataUrl=await new Promise(res=>{ const fr=new FileReader(); fr.onload=()=>res(fr.result); fr.readAsDataURL(blob); });
+    openIconCrop(dataUrl, s.bird_id);
+  }catch(e){ toast(t('iconLoadErr')); }
+}
+/* ===== success / congratulations modal ===== */
+var lastSavedPhoto=null;
+function showSuccess(birdId, photoDataUrl, newBadges){
+  const b=birdById(birdId);
+  lastSavedPhoto=photoDataUrl;
+  const badgesHtml=(newBadges&&newBadges.length)?`<div class="species-chips" style="justify-content:center">${newBadges.map(x=>`<span class="chip pub">🏅 ${x}</span>`).join('')}</div>`:'';
+  const iconBtn=photoDataUrl?`<button class="btn btn-primary" style="width:100%" onclick="closeSuccess(); openIconCrop(lastSavedPhoto, '${birdId}')">🖼️ ${t('setIconFor').replace('%s', b?b.name[lang]:'')}</button>`:'';
+  document.getElementById('successContent').innerHTML=
+    `<div style="text-align:center;font-size:2rem">🎉</div>
+     <div class="popup-bird" style="text-align:center;font-size:1.15rem">${t('congrats')}</div>
+     <div class="sub" style="text-align:center">${b?b.name[lang]:''}</div>
+     ${badgesHtml}${iconBtn}
+     <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeSuccess()">${t('done')}</button>`;
+  document.getElementById('successModal').classList.add('show');
+}
+function closeSuccess(){ document.getElementById('successModal').classList.remove('show'); }
+/* ===== in-app rear camera ===== */
+var camStream=null;
+async function openCamera(){
+  try{
+    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}, audio:false});
+    const v=document.getElementById('camVideo'); v.srcObject=camStream;
+    document.getElementById('camModal').classList.add('show');
+  }catch(e){ document.getElementById('camInput').click(); }
+}
+function closeCamera(){ if(camStream){ camStream.getTracks().forEach(tr=>tr.stop()); camStream=null; } document.getElementById('camModal').classList.remove('show'); }
+function snapCamera(){
+  const v=document.getElementById('camVideo'); if(!v.videoWidth) return;
+  const c=document.createElement('canvas'); c.width=v.videoWidth; c.height=v.videoHeight;
+  c.getContext('2d').drawImage(v,0,0);
+  c.toBlob(b=>{ closeCamera(); if(b) handlePhoto(b); }, 'image/jpeg', .9);
+}
 function photoUrl(path){
   return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null;
 }
@@ -1032,6 +1155,7 @@ function renderTimeline(){
           ${s.matrikel_label ? `<span class="chip">🏠 ${escapeHtml(s.matrikel_label)}</span>` : ''}
           ${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
+          ${s.photo_path ? `<button class="del-btn" style="color:var(--green-dark);text-decoration:none" onclick="iconFromSighting('${s.id}')">🖼️ ${t('setIcon')}</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -1055,8 +1179,8 @@ function foldText(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\
 function renderSpeciesGrid(){
   const el = document.getElementById('speciesGrid'); if (!el) return;
   const q = foldText(speciesFilter);
-  const list = BIRDS.filter(b => !q ||
-    foldText(b.name.en + ' ' + b.name.da + ' ' + b.latin).includes(q));
+  if (!q){ el.innerHTML = `<div class="empty" style="grid-column:1/-1;padding:16px">${t('searchToStart')}</div>`; return; }
+  const list = BIRDS.filter(b => foldText(b.name.en + ' ' + b.name.da + ' ' + b.latin).includes(q));
   el.innerHTML = list.length ? list.map(b =>
     `<div class="sp-opt ${selectedBird===b.id?'sel':''}" onclick="selectBird('${b.id}')">
       ${avatarHTML(b,'sm')}<span>${b.name[lang]}</span></div>`).join('')
@@ -1221,6 +1345,7 @@ async function saveSighting(){
     }
     sightings.unshift(saved);
     const newBadges = await checkBadges();
+    const savedBird = selectedBird, savedPhoto = logPhoto;
     selectedBird = null; logPhoto = null; logPhotoOriginal = null;
     speciesFilter = ''; document.getElementById('speciesSearch').value = '';
     document.getElementById('logNotes').value = '';
@@ -1228,8 +1353,9 @@ async function saveSighting(){
     document.getElementById('cropBtn').style.display = 'none';
     document.getElementById('camInput').value = ''; document.getElementById('galInput').value = '';
     renderSpeciesGrid(); setNow(); refreshMapMarkers(); updateStats();
-    toast(newBadges.length ? `${t('saved')} 🏅 ${t('badgeUnlocked')} ${newBadges.join(', ')}` : t('saved'));
     showView('timeline');
+    if (savedPhoto) showSuccess(savedBird, savedPhoto, newBadges);
+    else toast(newBadges.length ? `${t('saved')} 🏅 ${t('badgeUnlocked')} ${newBadges.join(', ')}` : t('saved'));
   } catch(e){ toast((e && e.message) || String(e)); }
   finally { btn.disabled = false; btn.textContent = t('save'); }
 }
@@ -1327,15 +1453,22 @@ function renderBadges(){
 }
 
 /* ============ field guide ============ */
+let guideFilter = '';
 function renderGuide(){
   const el = document.getElementById('guideList'); if (!el) return;
-  const seen = uniqueSpeciesSeen();
-  el.innerHTML = BIRDS.map(b => `
+  const gs = document.getElementById('guideSub'); if (gs) gs.textContent = t('guideSub').replace('%n', BIRDS.length);
+  const seenSet = new Set(uniqueSpeciesSeen());
+  const mfSet = new Set(sightings.filter(s => s.is_matrikelfugl).map(s => s.bird_id));
+  const rank = id => mfSet.has(id) ? 2 : seenSet.has(id) ? 1 : 0;
+  const q = foldText(guideFilter);
+  const list = BIRDS.filter(b => !q || foldText(b.name.en + ' ' + b.name.da + ' ' + b.latin).includes(q))
+    .slice().sort((a, b) => rank(b.id) - rank(a.id));
+  el.innerHTML = (list.length ? list.map(b => `
     <div class="card">
       <div class="guide-item" onclick="this.nextElementSibling.classList.toggle('open')">
         ${avatarHTML(b)}
         <div><div class="tl-name">${b.name[lang]}</div><div class="tl-latin">${b.latin}</div></div>
-        ${seen.includes(b.id) ? `<div class="seen-mark">✓ ${t('seen')}</div>` : ''}
+        ${mfSet.has(b.id) ? `<div class="seen-badge house" title="${t('seenProperty')}">🏡</div>` : seenSet.has(b.id) ? `<div class="seen-badge" title="${t('seen')}">✓</div>` : ''}
       </div>
       <dl class="guide-detail">
         <dt>${t('latinName')}</dt><dd><i>${b.latin}</i></dd>
@@ -1345,7 +1478,7 @@ function renderGuide(){
         <dt>${t('statusLbl')}</dt><dd style="font-weight:bold;color:${statusColor(b.status)}">● ${t('st'+b.status)} (${b.status})</dd>
         <dt>${t('habitatLbl')}</dt><dd>${b.habitat[lang]}</dd>
       </dl>
-    </div>`).join('');
+    </div>`).join('') : `<div class="empty">${t('noMatches')}</div>`);
 }
 
 /* ============ main map ============ */
