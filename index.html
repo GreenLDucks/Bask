@@ -268,7 +268,7 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
   <section class="view" id="view-guide">
     <h2 data-i18n="guide"></h2>
     <p class="sub" id="guideSub"></p>
-    <input type="text" id="guideSearch" data-i18n-ph="searchSpecies" style="margin-bottom:10px" oninput="guideFilter=this.value.trim();renderGuide()">
+    <input type="text" id="guideSearch" data-i18n-ph="searchSpecies" style="margin-bottom:10px" oninput="guideSearchInput(this.value)">
     <div id="guideList"></div>
   </section>
 
@@ -360,11 +360,13 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
   <div id="camWrap" style="position:relative;width:100%;max-width:640px;overflow:hidden;border-radius:10px;background:#000">
     <video id="camVideo" autoplay playsinline muted style="width:100%;display:block;transform-origin:center center"></video>
   </div>
-  <input type="range" id="camZoomSlider" min="1" max="5" step="0.1" value="1" oninput="setCamZoom(this.value)" style="width:100%;max-width:640px;margin-top:12px;accent-color:var(--gold)">
+  <input type="range" id="camZoomSlider" min="1" max="8" step="0.1" value="1" oninput="setCamZoom(this.value)" style="width:100%;max-width:640px;margin-top:12px;accent-color:var(--gold)">
+  <div id="camZoomLabel" style="color:#f7f3e8;font-size:.8rem;margin-top:4px">1.0x</div>
   <div class="crop-btns">
     <button class="btn btn-secondary" style="background:transparent;color:#f7f3e8;border-color:#f7f3e8" onclick="closeCamera()" data-i18n="cropCancel"></button>
     <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="snapCamera()" data-i18n="capture"></button>
   </div>
+  <button class="btn btn-secondary" style="background:rgba(255,255,255,.18);color:#fff;border-color:#fff;margin-top:12px" onclick="openNativeCamera()" data-i18n="nativeCamera"></button>
 </div>
 <div id="successModal" onclick="closeSuccess()"><div id="successContent" onclick="event.stopPropagation()"></div></div>
 <div id="friendModal" onclick="closeFriend()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeFriend()">✕</button><div id="friendContent"></div></div></div>
@@ -646,7 +648,7 @@ const I18N = {
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
   save:'Save sighting', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
-  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture',
+  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)',
   people:'People', peopleSub:'Find other watchers and see their public sightings.', searchName:'Search by name…', addFriend:'Add', removeFriend:'Added', friendsList:'Your friends', noFriends:'No friends yet — search by name above.', noResults:'No users found.', publicOnly:'public only', noPublic:'No public sightings.', propertyBirds:'property birds',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
   milestoneBadges:'Milestones', speciesBadges:'Species badges',
@@ -689,7 +691,7 @@ const I18N = {
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
   save:'Gem observation', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
-  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede',
+  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)',
   people:'Personer', peopleSub:'Find andre fuglekiggere og se deres offentlige observationer.', searchName:'Søg efter navn…', addFriend:'Tilføj', removeFriend:'Tilføjet', friendsList:'Dine venner', noFriends:'Ingen venner endnu — søg efter navn ovenfor.', noResults:'Ingen brugere fundet.', publicOnly:'kun offentlige', noPublic:'Ingen offentlige observationer.', propertyBirds:'matrikelfugle',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
   milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
@@ -1065,7 +1067,7 @@ function showSuccess(birdId, photoDataUrl, newBadges, photoPath){
 }
 function closeSuccess(){ document.getElementById('successModal').classList.remove('show'); }
 /* ===== in-app rear camera ===== */
-var camStream=null, camTrack=null, camZoomHW=false, camZoom=1;
+var camStream=null, camTrack=null, camZoomHW=false, camZoom=1, camHwMax=1;
 async function openCamera(){
   try{
     camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}}, audio:false});
@@ -1074,18 +1076,22 @@ async function openCamera(){
     const sl=document.getElementById('camZoomSlider');
     let caps=null; try{ caps=camTrack.getCapabilities?camTrack.getCapabilities():null; }catch(e){}
     if(caps && caps.zoom){
-      camZoomHW=true; sl.min=caps.zoom.min; sl.max=caps.zoom.max; sl.step=caps.zoom.step||0.1;
+      camZoomHW=true; camHwMax=caps.zoom.max;
+      sl.min=caps.zoom.min; sl.max=(caps.zoom.max*4); sl.step=(caps.zoom.step||0.1);
       sl.value=(camTrack.getSettings&&camTrack.getSettings().zoom)||caps.zoom.min;
-    } else { camZoomHW=false; sl.min=1; sl.max=5; sl.step=0.1; sl.value=1; }
-    camZoom=parseFloat(sl.value)||1;
-    v.style.transform = camZoomHW ? 'none' : ('scale('+camZoom+')');
+    } else { camZoomHW=false; camHwMax=1; sl.min=1; sl.max=8; sl.step=0.1; sl.value=1; }
+    setCamZoom(sl.value);
     document.getElementById('camModal').classList.add('show'); lockScroll(true);
   }catch(e){ document.getElementById('camInput').click(); }
 }
 function setCamZoom(val){
   camZoom=parseFloat(val)||1;
-  if(camZoomHW && camTrack){ try{ camTrack.applyConstraints({advanced:[{zoom:camZoom}]}); }catch(e){} }
-  else { document.getElementById('camVideo').style.transform='scale('+camZoom+')'; }
+  const v=document.getElementById('camVideo');
+  if(camZoomHW && camTrack){
+    if(camZoom<=camHwMax){ try{ camTrack.applyConstraints({advanced:[{zoom:camZoom}]}); }catch(e){} v.style.transform='none'; }
+    else { try{ camTrack.applyConstraints({advanced:[{zoom:camHwMax}]}); }catch(e){} v.style.transform='scale('+(camZoom/camHwMax)+')'; }
+  } else { v.style.transform='scale('+camZoom+')'; }
+  const lbl=document.getElementById('camZoomLabel'); if(lbl) lbl.textContent=camZoom.toFixed(1)+'x';
 }
 function closeCamera(){
   if(camStream){ camStream.getTracks().forEach(tr=>tr.stop()); camStream=null; }
@@ -1094,13 +1100,15 @@ function closeCamera(){
 }
 function snapCamera(){
   const v=document.getElementById('camVideo'); if(!v.videoWidth) return;
+  const digital = camZoomHW ? Math.max(1, camZoom/camHwMax) : camZoom;
   const c=document.createElement('canvas');
-  if(!camZoomHW && camZoom>1){
-    const sw=v.videoWidth/camZoom, sh=v.videoHeight/camZoom, sx=(v.videoWidth-sw)/2, sy=(v.videoHeight-sh)/2;
+  if(digital>1){
+    const sw=v.videoWidth/digital, sh=v.videoHeight/digital, sx=(v.videoWidth-sw)/2, sy=(v.videoHeight-sh)/2;
     c.width=sw; c.height=sh; c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
   } else { c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0); }
   c.toBlob(b=>{ closeCamera(); if(b) handlePhoto(b); }, 'image/jpeg', .92);
 }
+function openNativeCamera(){ closeCamera(); document.getElementById('camInput').click(); }
 /* ===== people / friends ===== */
 var friends = [], nameCache = {};
 let peopleQuery = '';
@@ -1626,6 +1634,8 @@ function renderBadges(){
 
 /* ============ field guide ============ */
 let guideFilter = '';
+let guideDebounce = null;
+function guideSearchInput(v){ guideFilter = (v||'').trim(); clearTimeout(guideDebounce); guideDebounce = setTimeout(renderGuide, 200); }
 function renderGuide(){
   const el = document.getElementById('guideList'); if (!el) return;
   const gs = document.getElementById('guideSub'); if (gs) gs.textContent = t('guideSub').replace('%n', BIRDS.length);
