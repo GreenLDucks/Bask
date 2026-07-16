@@ -238,13 +238,14 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
     <p class="sub" data-i18n="logSub"></p>
     <label class="fld" style="margin-top:6px" data-i18n="photoOptional"></label>
     <div class="photo-row" style="margin-top:0">
-      <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="openCamera()">📷 <span data-i18n="takePhoto"></span></button>
+      <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="document.getElementById('camInput').click()">📷 <span data-i18n="takePhoto"></span></button>
       <button class="btn btn-secondary" onclick="document.getElementById('galInput').click()">🖼️ <span data-i18n="fromGallery"></span></button>
     </div>
     <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
     <input type="file" id="galInput" accept="image/*" hidden>
     <img id="photoPreview" alt="">
     <button class="btn btn-secondary" id="cropBtn" style="display:none;margin-top:8px" onclick="openCrop()">✂️ <span data-i18n="cropBtn"></span></button>
+    <button class="btn btn-secondary" id="removePhotoBtn" style="display:none;margin-top:8px" onclick="removePhoto()" data-i18n="removePhoto"></button>
     <label class="fld" data-i18n="species"></label>
     <input type="text" id="speciesSearch" data-i18n-ph="searchSpecies" style="margin-bottom:8px" oninput="speciesFilter=this.value.trim();renderSpeciesGrid()">
     <div class="species-grid" id="speciesGrid"></div>
@@ -355,18 +356,6 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
     <button class="btn btn-secondary" style="background:transparent;color:#f7f3e8;border-color:#f7f3e8" onclick="closeIconCrop()" data-i18n="cropCancel"></button>
     <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="applyIconCrop()" data-i18n="iconApply"></button>
   </div>
-</div>
-<div id="camModal">
-  <div id="camWrap" style="position:relative;width:100%;max-width:640px;overflow:hidden;border-radius:10px;background:#000">
-    <video id="camVideo" autoplay playsinline muted style="width:100%;display:block;transform-origin:center center"></video>
-  </div>
-  <input type="range" id="camZoomSlider" min="1" max="8" step="0.1" value="1" oninput="setCamZoom(this.value)" style="width:100%;max-width:640px;margin-top:12px;accent-color:var(--gold)">
-  <div id="camZoomLabel" style="color:#f7f3e8;font-size:.8rem;margin-top:4px">1.0x</div>
-  <div class="crop-btns">
-    <button class="btn btn-secondary" style="background:transparent;color:#f7f3e8;border-color:#f7f3e8" onclick="closeCamera()" data-i18n="cropCancel"></button>
-    <button class="btn btn-primary" style="width:auto;margin-top:0" onclick="snapCamera()" data-i18n="capture"></button>
-  </div>
-  <button class="btn btn-secondary" style="background:rgba(255,255,255,.18);color:#fff;border-color:#fff;margin-top:12px" onclick="openNativeCamera()" data-i18n="nativeCamera"></button>
 </div>
 <div id="successModal" onclick="closeSuccess()"><div id="successContent" onclick="event.stopPropagation()"></div></div>
 <div id="friendModal" onclick="closeFriend()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeFriend()">✕</button><div id="friendContent"></div></div></div>
@@ -648,7 +637,7 @@ const I18N = {
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
   save:'Save sighting', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
-  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)',
+  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo',
   people:'People', peopleSub:'Find other watchers and see their public sightings.', searchName:'Search by name…', addFriend:'Add', removeFriend:'Added', friendsList:'Your friends', noFriends:'No friends yet — search by name above.', noResults:'No users found.', publicOnly:'public only', noPublic:'No public sightings.', propertyBirds:'property birds',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
   milestoneBadges:'Milestones', speciesBadges:'Species badges',
@@ -670,7 +659,7 @@ const I18N = {
   tokenMissing:'Add your Dataforsyningen token under Profile to show cadastral parcels.',
   bFirst:'First Bird', bSpecies:'Species', bDesc1:'Observe your first species', bDescN:'Observe %n different species',
   photoTip:'Photo added ✓', you:'You', otherUser:'Another watcher',
-  searchSpecies:'Search species…', cropBtn:'Crop photo', cropApply:'Use crop', cropCancel:'Cancel',
+  searchSpecies:'Search bird species…', cropBtn:'Crop', cropApply:'Use crop', cropCancel:'Cancel',
   cropHint:'Drag the box over the bird — resize with the gold handle.',
   noMatches:'No species match your search.',
   email:'Email', password:'Password', logIn:'Log in', signUp:'Create account', logOut:'Log out',
@@ -691,7 +680,7 @@ const I18N = {
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
   save:'Gem observation', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
-  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)',
+  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto',
   people:'Personer', peopleSub:'Find andre fuglekiggere og se deres offentlige observationer.', searchName:'Søg efter navn…', addFriend:'Tilføj', removeFriend:'Tilføjet', friendsList:'Dine venner', noFriends:'Ingen venner endnu — søg efter navn ovenfor.', noResults:'Ingen brugere fundet.', publicOnly:'kun offentlige', noPublic:'Ingen offentlige observationer.', propertyBirds:'matrikelfugle',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
   milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
@@ -713,7 +702,7 @@ const I18N = {
   tokenMissing:'Tilføj din Dataforsyningen-token under Profil for at vise matrikelkortet.',
   bFirst:'Første Fugl', bSpecies:'Arter', bDesc1:'Observér din første art', bDescN:'Observér %n forskellige arter',
   photoTip:'Foto tilføjet ✓', you:'Dig', otherUser:'Anden fuglekigger',
-  searchSpecies:'Søg efter art…', cropBtn:'Beskær foto', cropApply:'Brug beskæring', cropCancel:'Annullér',
+  searchSpecies:'Søg efter fugleart…', cropBtn:'Beskær', cropApply:'Brug beskæring', cropCancel:'Annullér',
   cropHint:'Træk boksen hen over fuglen — ændr størrelse med det gyldne håndtag.',
   noMatches:'Ingen arter matcher søgningen.',
   email:'Email', password:'Adgangskode', logIn:'Log ind', signUp:'Opret konto', logOut:'Log ud',
@@ -1067,48 +1056,7 @@ function showSuccess(birdId, photoDataUrl, newBadges, photoPath){
 }
 function closeSuccess(){ document.getElementById('successModal').classList.remove('show'); }
 /* ===== in-app rear camera ===== */
-var camStream=null, camTrack=null, camZoomHW=false, camZoom=1, camHwMax=1;
-async function openCamera(){
-  try{
-    camStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1920}, height:{ideal:1080}}, audio:false});
-    const v=document.getElementById('camVideo'); v.srcObject=camStream;
-    camTrack=camStream.getVideoTracks()[0];
-    const sl=document.getElementById('camZoomSlider');
-    let caps=null; try{ caps=camTrack.getCapabilities?camTrack.getCapabilities():null; }catch(e){}
-    if(caps && caps.zoom){
-      camZoomHW=true; camHwMax=caps.zoom.max;
-      sl.min=caps.zoom.min; sl.max=(caps.zoom.max*4); sl.step=(caps.zoom.step||0.1);
-      sl.value=(camTrack.getSettings&&camTrack.getSettings().zoom)||caps.zoom.min;
-    } else { camZoomHW=false; camHwMax=1; sl.min=1; sl.max=8; sl.step=0.1; sl.value=1; }
-    setCamZoom(sl.value);
-    document.getElementById('camModal').classList.add('show'); lockScroll(true);
-  }catch(e){ document.getElementById('camInput').click(); }
-}
-function setCamZoom(val){
-  camZoom=parseFloat(val)||1;
-  const v=document.getElementById('camVideo');
-  if(camZoomHW && camTrack){
-    if(camZoom<=camHwMax){ try{ camTrack.applyConstraints({advanced:[{zoom:camZoom}]}); }catch(e){} v.style.transform='none'; }
-    else { try{ camTrack.applyConstraints({advanced:[{zoom:camHwMax}]}); }catch(e){} v.style.transform='scale('+(camZoom/camHwMax)+')'; }
-  } else { v.style.transform='scale('+camZoom+')'; }
-  const lbl=document.getElementById('camZoomLabel'); if(lbl) lbl.textContent=camZoom.toFixed(1)+'x';
-}
-function closeCamera(){
-  if(camStream){ camStream.getTracks().forEach(tr=>tr.stop()); camStream=null; }
-  camTrack=null; const v=document.getElementById('camVideo'); if(v) v.style.transform='none';
-  document.getElementById('camModal').classList.remove('show'); lockScroll(false);
-}
-function snapCamera(){
-  const v=document.getElementById('camVideo'); if(!v.videoWidth) return;
-  const digital = camZoomHW ? Math.max(1, camZoom/camHwMax) : camZoom;
-  const c=document.createElement('canvas');
-  if(digital>1){
-    const sw=v.videoWidth/digital, sh=v.videoHeight/digital, sx=(v.videoWidth-sw)/2, sy=(v.videoHeight-sh)/2;
-    c.width=sw; c.height=sh; c.getContext('2d').drawImage(v, sx, sy, sw, sh, 0, 0, sw, sh);
-  } else { c.width=v.videoWidth; c.height=v.videoHeight; c.getContext('2d').drawImage(v,0,0); }
-  c.toBlob(b=>{ closeCamera(); if(b) handlePhoto(b); }, 'image/jpeg', .92);
-}
-function openNativeCamera(){ closeCamera(); document.getElementById('camInput').click(); }
+/* in-app camera removed — native camera app is used directly */
 /* ===== people / friends ===== */
 var friends = [], nameCache = {};
 let peopleQuery = '';
@@ -1296,7 +1244,7 @@ async function deleteSighting(id){
 
 /* ============ log form ============ */
 let selectedBird = null, logLatLng = null, logPhoto = null;
-let editingId = null, editPhotoPath = null;
+let editingId = null, editPhotoPath = null, removePhotoFlag = false;
 let miniMap = null, miniMarker = null;
 let speciesFilter = '';
 function foldText(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a'); }
@@ -1360,9 +1308,19 @@ function handlePhoto(file){
     const pv = document.getElementById('photoPreview');
     pv.src = logPhoto; pv.style.display = 'block';
     document.getElementById('cropBtn').style.display = 'inline-flex';
+    document.getElementById('removePhotoBtn').style.display = 'inline-flex';
+    removePhotoFlag = false;
     toast(t('photoTip'));
   };
   img.src = URL.createObjectURL(file);
+}
+function removePhoto(){
+  logPhoto = null; logPhotoOriginal = null;
+  if (editingId && editPhotoPath) removePhotoFlag = true;
+  const pv = document.getElementById('photoPreview'); pv.src = ''; pv.style.display = 'none';
+  document.getElementById('cropBtn').style.display = 'none';
+  document.getElementById('removePhotoBtn').style.display = 'none';
+  document.getElementById('camInput').value = ''; document.getElementById('galInput').value = '';
 }
 
 /* ---- photo crop ---- */
@@ -1465,6 +1423,10 @@ async function saveSighting(){
         const upd = await db.from('sightings').update({photo_path: path}).eq('id', saved.id).select().single();
         if (upd.data) saved = upd.data;
       }
+    } else if (isEdit && removePhotoFlag && editPhotoPath){
+      try { await db.storage.from('photos').remove([editPhotoPath, editPhotoPath.replace(/\.jpg$/i,'_thumb.jpg')]); } catch(e){}
+      const upd = await db.from('sightings').update({photo_path: null}).eq('id', saved.id).select().single();
+      if (upd.data) saved = upd.data;
     }
     let mat = await reverseMatrikel(saved.lat, saved.lng);
     const mf = !!(matrikelfuglActive && homeMatrikel);
@@ -1487,6 +1449,7 @@ async function saveSighting(){
     document.getElementById('logNotes').value = '';
     const pv = document.getElementById('photoPreview'); pv.style.display = 'none';
     document.getElementById('cropBtn').style.display = 'none';
+    document.getElementById('removePhotoBtn').style.display = 'none'; removePhotoFlag = false;
     document.getElementById('camInput').value = ''; document.getElementById('galInput').value = '';
     document.getElementById('cancelEdit').style.display = 'none';
     renderSpeciesGrid(); setNow(); renderTimeline(); refreshMapMarkers(); updateStats();
@@ -1510,6 +1473,8 @@ function editSighting(id){
   const pv=document.getElementById('photoPreview');
   if(editPhotoPath){ pv.src=photoUrl(editPhotoPath); pv.style.display='block'; } else { pv.src=''; pv.style.display='none'; }
   document.getElementById('cropBtn').style.display='none';
+  removePhotoFlag=false;
+  document.getElementById('removePhotoBtn').style.display = editPhotoPath ? 'inline-flex' : 'none';
   setTimeout(()=>{ if(miniMap){ placeMiniMarker(s.lat, s.lng, true); onUserMovedPin(); } }, 160);
   document.getElementById('saveBtn').textContent=t('update');
   document.getElementById('cancelEdit').style.display='block';
@@ -1521,6 +1486,7 @@ function cancelEditMode(){
   document.getElementById('logNotes').value='';
   document.getElementById('photoPreview').style.display='none';
   document.getElementById('cropBtn').style.display='none';
+  document.getElementById('removePhotoBtn').style.display='none'; removePhotoFlag=false;
   document.getElementById('cancelEdit').style.display='none';
   document.getElementById('saveBtn').textContent=t('save');
   renderSpeciesGrid(); setNow(); showView('timeline');
