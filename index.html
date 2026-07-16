@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#2d5a3d">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Bask</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+:root{
+  --green-dark:#2d5a3d; --green:#3f7a52; --green-light:#e4eede;
+  --cream:#f7f3e8; --cream-dark:#efe8d5; --ink:#2b2b23; --ink-soft:#6b6b58;
+  --terracotta:#c2683f; --gold:#c9a227; --card:#fffdf7; --line:#ddd5bf;
+  --radius:14px; --shadow:0 2px 8px rgba(43,43,35,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:Georgia,'Times New Roman',serif;background:var(--cream);color:var(--ink);
+  -webkit-font-smoothing:antialiased;overscroll-behavior:none}
+button,input,select,textarea{font-family:inherit;font-size:1rem}
+header{background:var(--green-dark);color:var(--cream);padding:14px 16px 12px;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:1000}
+header h1{font-size:1.25rem;font-weight:normal;font-style:italic;letter-spacing:.5px}
+header h1 span{font-style:normal;font-size:.75rem;opacity:.75;display:block;letter-spacing:1px}
+.lang-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
+  color:var(--cream);border-radius:20px;padding:5px 12px;font-size:.85rem;cursor:pointer}
+main{padding-bottom:74px;min-height:calc(100% - 60px)}
+.view{display:none;padding:16px;max-width:640px;margin:0 auto}
+.view.active{display:block}
+.view h2{font-size:1.15rem;color:var(--green-dark);margin-bottom:4px;
+  border-bottom:2px solid var(--line);padding-bottom:6px}
+.view .sub{font-size:.85rem;color:var(--ink-soft);margin-bottom:14px;font-style:italic}
+nav{position:fixed;bottom:0;left:0;right:0;background:var(--card);
+  border-top:1px solid var(--line);display:flex;z-index:1000;
+  padding-bottom:env(safe-area-inset-bottom)}
+nav button{flex:1;background:none;border:none;padding:8px 2px 6px;cursor:pointer;
+  color:var(--ink-soft);font-size:.62rem;display:flex;flex-direction:column;
+  align-items:center;gap:2px;line-height:1.1}
+nav button svg{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;
+  stroke-linecap:round;stroke-linejoin:round}
+nav button.active{color:var(--green-dark);font-weight:bold}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow);padding:14px;margin-bottom:12px}
+.empty{color:var(--ink-soft);font-style:italic;text-align:center;padding:34px 20px;
+  border:1.5px dashed var(--line);border-radius:var(--radius);margin-top:10px}
+.avatar{width:52px;height:52px;border-radius:50%;flex-shrink:0;display:flex;
+  align-items:center;justify-content:center;border:2px solid rgba(0,0,0,.12)}
+.avatar svg{width:32px;height:32px}
+.avatar.sm{width:38px;height:38px}.avatar.sm svg{width:23px;height:23px}
+.tl-item{display:flex;gap:12px;align-items:flex-start}
+.tl-date{font-size:.72rem;color:var(--ink-soft);letter-spacing:.4px;text-transform:uppercase}
+.tl-name{font-weight:bold;color:var(--green-dark)}
+.tl-latin{font-style:italic;font-size:.82rem;color:var(--ink-soft)}
+.tl-note{font-size:.88rem;margin-top:4px}
+.tl-photo{width:100%;border-radius:10px;margin-top:8px;max-height:260px;object-fit:cover}
+.tl-meta{display:flex;gap:8px;margin-top:6px;flex-wrap:wrap}
+.chip{font-size:.7rem;background:var(--green-light);color:var(--green-dark);
+  border-radius:20px;padding:2px 9px}
+.chip.pub{background:#fdeedd;color:var(--terracotta)}
+.del-btn{background:none;border:none;color:#b0503a;font-size:.75rem;cursor:pointer;
+  margin-left:auto;text-decoration:underline}
+#map{height:calc(100vh - 235px);min-height:320px;border-radius:var(--radius);
+  border:1px solid var(--line);z-index:1}
+.map-controls{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+.toggle{display:flex;align-items:center;gap:6px;font-size:.8rem;background:var(--card);
+  border:1px solid var(--line);border-radius:20px;padding:5px 11px;cursor:pointer;user-select:none}
+.toggle input{accent-color:var(--green-dark)}
+.legend{font-size:.75rem;color:var(--ink-soft);margin-top:8px;display:flex;gap:14px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:4px;vertical-align:middle}
+label.fld{display:block;font-size:.8rem;color:var(--green-dark);font-weight:bold;
+  margin:14px 0 5px;letter-spacing:.3px;text-transform:uppercase}
+input[type=text],input[type=email],input[type=password],input[type=datetime-local],select,textarea{
+  width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink)}
+textarea{resize:vertical;min-height:64px}
+.species-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:8px}
+.sp-opt{border:1.5px solid var(--line);border-radius:12px;background:var(--card);padding:10px 4px;
+  text-align:center;cursor:pointer;font-size:.72rem;line-height:1.15;display:flex;
+  flex-direction:column;align-items:center;gap:5px}
+.sp-opt.sel{border-color:var(--green-dark);background:var(--green-light);font-weight:bold}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:none;
+  border-radius:12px;padding:12px 18px;font-size:1rem;cursor:pointer}
+.btn-primary{background:var(--green-dark);color:var(--cream);width:100%;margin-top:20px}
+.btn-secondary{background:var(--card);border:1.5px solid var(--green-dark);
+  color:var(--green-dark);font-size:.85rem;padding:9px 14px}
+.btn:disabled{opacity:.5}
+#locStatus{font-size:.8rem;color:var(--ink-soft);margin-top:6px;font-style:italic}
+#miniMap{height:200px;border-radius:10px;border:1px solid var(--line);margin-top:8px;z-index:1}
+#photoPreview{width:100%;max-height:240px;object-fit:cover;border-radius:10px;margin-top:8px;display:none}
+.photo-row{display:flex;gap:8px;margin-top:6px}
+.pub-row{display:flex;align-items:center;gap:10px;margin-top:16px;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:.88rem}
+.pub-row input{accent-color:var(--green-dark);width:18px;height:18px;flex-shrink:0}
+.guide-item{display:flex;gap:12px;align-items:center;cursor:pointer}
+.guide-detail{font-size:.86rem;margin-top:10px;display:none;border-top:1px dashed var(--line);padding-top:10px}
+.guide-detail.open{display:block}
+.guide-detail dt{font-weight:bold;color:var(--green-dark);font-size:.72rem;
+  text-transform:uppercase;letter-spacing:.4px;margin-top:7px}
+.guide-detail dd{margin:1px 0 0}
+.status-lc{color:#3f7a52;font-weight:bold}
+.seen-mark{margin-left:auto;font-size:.72rem;color:var(--gold);font-weight:bold;text-align:right}
+.badge-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(100px,1fr));gap:10px}
+.badge{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  padding:12px 6px;text-align:center;font-size:.7rem;line-height:1.2}
+.badge .medal{width:52px;height:52px;border-radius:50%;margin:0 auto 7px;display:flex;
+  align-items:center;justify-content:center;font-size:1.35rem;
+  background:radial-gradient(circle at 35% 30%,#e8d48b,var(--gold));
+  border:2.5px solid #a8871d;color:#5c4a08}
+.badge.locked{opacity:.45;filter:grayscale(1)}
+.badge .bname{font-weight:bold;color:var(--green-dark)}
+.badge .bdate{color:var(--ink-soft);font-size:.62rem;margin-top:2px}
+.stat-row{display:flex;gap:10px;margin-bottom:14px}
+.stat{flex:1;background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
+  text-align:center;padding:12px 4px}
+.stat b{display:block;font-size:1.5rem;color:var(--green-dark)}
+.stat span{font-size:.68rem;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.4px}
+.note{font-size:.78rem;color:var(--ink-soft);background:var(--cream-dark);
+  border-radius:10px;padding:10px 12px;margin-top:10px;line-height:1.45}
+#toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(20px);
+  background:var(--green-dark);color:var(--cream);padding:11px 20px;border-radius:24px;
+  font-size:.88rem;opacity:0;pointer-events:none;transition:.3s;z-index:2000;
+  max-width:88vw;text-align:center;box-shadow:var(--shadow)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.leaflet-container{font-family:inherit}
+.popup-bird{font-weight:bold;color:var(--green-dark)}
+.popup-sub{font-size:.78rem;color:var(--ink-soft)}
+/* auth overlay */
+#authView{position:fixed;inset:0;background:var(--cream);z-index:1500;display:none;
+  overflow-y:auto;padding:0 16px 40px}
+#authView.show{display:block}
+.auth-box{max-width:420px;margin:0 auto}
+.auth-logo{text-align:center;margin:48px 0 8px;font-size:2rem;font-style:italic;color:var(--green-dark)}
+.auth-tag{text-align:center;font-size:.8rem;letter-spacing:2px;color:var(--ink-soft);
+  text-transform:uppercase;margin-bottom:28px}
+.auth-err{color:#b0503a;font-size:.85rem;margin-top:10px;min-height:1.2em}
+.auth-alt{text-align:center;margin-top:16px;font-size:.85rem;color:var(--ink-soft)}
+.auth-alt a{color:var(--green-dark);cursor:pointer;text-decoration:underline}
+.auth-lang{position:absolute;top:14px;right:14px}
+#appShell{display:none}
+#appShell.show{display:block}
+</style>
+</head>
+<body>
+
+<!-- AUTH -->
+<section id="authView">
+  <button class="lang-btn auth-lang" onclick="toggleLang()">Dansk</button>
+  <div class="auth-box">
+    <div class="auth-logo">Bask</div>
+    <div class="auth-tag" data-i18n="tagline"></div>
+    <div class="card">
+      <label class="fld" style="margin-top:0" data-i18n="email"></label>
+      <input type="email" id="authEmail" autocomplete="email">
+      <label class="fld" data-i18n="password"></label>
+      <input type="password" id="authPass" autocomplete="current-password">
+      <div class="auth-err" id="authErr"></div>
+      <button class="btn btn-primary" id="authMainBtn" onclick="doAuth()" data-i18n="logIn"></button>
+      <div class="auth-alt" id="authAltRow">
+        <span data-i18n="noAccount"></span> <a onclick="setAuthMode('signup')" data-i18n="signUp"></a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- APP -->
+<div id="appShell">
+<header>
+  <h1>Bask <span data-i18n="tagline"></span></h1>
+  <button class="lang-btn" onclick="toggleLang()" id="langBtnHdr">Dansk</button>
+</header>
+
+<main>
+  <section class="view active" id="view-timeline">
+    <h2 data-i18n="timeline"></h2>
+    <p class="sub" data-i18n="timelineSub"></p>
+    <div id="timelineList"></div>
+  </section>
+
+  <section class="view" id="view-map">
+    <h2 data-i18n="map"></h2>
+    <p class="sub" data-i18n="mapSub"></p>
+    <div class="map-controls">
+      <label class="toggle"><input type="checkbox" id="cadToggle"> <span data-i18n="cadastral"></span></label>
+      <label class="toggle"><input type="checkbox" id="commToggle" checked> <span data-i18n="community"></span></label>
+      <button class="btn btn-secondary" style="padding:5px 11px;font-size:.8rem" onclick="centerOnMe()">📍 <span data-i18n="myLocation"></span></button>
+    </div>
+    <div id="map"></div>
+    <div class="legend">
+      <span><span class="dot" style="background:#2d5a3d"></span><span data-i18n="mySightings"></span></span>
+      <span><span class="dot" style="background:#c2683f"></span><span data-i18n="otherSightings"></span></span>
+    </div>
+  </section>
+
+  <section class="view" id="view-log">
+    <h2 data-i18n="newSighting"></h2>
+    <p class="sub" data-i18n="logSub"></p>
+    <label class="fld" data-i18n="species"></label>
+    <div class="species-grid" id="speciesGrid"></div>
+    <label class="fld" data-i18n="when"></label>
+    <input type="datetime-local" id="logWhen">
+    <label class="fld" data-i18n="where"></label>
+    <button class="btn btn-secondary" onclick="pinpointMe()">📍 <span data-i18n="useMyLocation"></span></button>
+    <div id="locStatus" data-i18n="locHint"></div>
+    <div id="miniMap"></div>
+    <label class="fld" data-i18n="photoOptional"></label>
+    <div class="photo-row">
+      <button class="btn btn-secondary" onclick="document.getElementById('camInput').click()">📷 <span data-i18n="takePhoto"></span></button>
+      <button class="btn btn-secondary" onclick="document.getElementById('galInput').click()">🖼️ <span data-i18n="fromGallery"></span></button>
+    </div>
+    <input type="file" id="camInput" accept="image/*" capture="environment" hidden>
+    <input type="file" id="galInput" accept="image/*" hidden>
+    <img id="photoPreview" alt="">
+    <label class="fld" data-i18n="notes"></label>
+    <textarea id="logNotes"></textarea>
+    <label class="pub-row"><input type="checkbox" id="logPublic" checked> <span data-i18n="sharePublic"></span></label>
+    <button class="btn btn-primary" id="saveBtn" onclick="saveSighting()" data-i18n="save"></button>
+  </section>
+
+  <section class="view" id="view-guide">
+    <h2 data-i18n="guide"></h2>
+    <p class="sub" data-i18n="guideSub"></p>
+    <div id="guideList"></div>
+  </section>
+
+  <section class="view" id="view-badges">
+    <h2 data-i18n="badges"></h2>
+    <p class="sub" data-i18n="badgesSub"></p>
+    <h3 style="font-size:.9rem;color:var(--green-dark);margin:14px 0 8px" data-i18n="milestoneBadges"></h3>
+    <div class="badge-grid" id="milestoneBadges"></div>
+    <h3 style="font-size:.9rem;color:var(--green-dark);margin:18px 0 8px" data-i18n="speciesBadges"></h3>
+    <div class="badge-grid" id="speciesBadges"></div>
+  </section>
+
+  <section class="view" id="view-profile">
+    <h2 data-i18n="profile"></h2>
+    <p class="sub" id="profEmail"></p>
+    <div class="stat-row">
+      <div class="stat"><b id="statSightings">0</b><span data-i18n="sightings"></span></div>
+      <div class="stat"><b id="statSpecies">0</b><span data-i18n="uniqueSpecies"></span></div>
+      <div class="stat"><b id="statBadges">0</b><span data-i18n="badgesEarned"></span></div>
+    </div>
+    <div class="card">
+      <label class="fld" style="margin-top:0" data-i18n="displayName"></label>
+      <input type="text" id="profName" placeholder="—">
+      <button class="btn btn-secondary" style="margin-top:10px" onclick="saveProfile()" data-i18n="saveProfile"></button>
+      <div class="note" data-i18n="cloudNote"></div>
+    </div>
+    <div class="card">
+      <label class="fld" style="margin-top:0" data-i18n="dfToken"></label>
+      <input type="text" id="dfToken" placeholder="Dataforsyningen token">
+      <button class="btn btn-secondary" style="margin-top:10px" onclick="saveToken()" data-i18n="saveToken"></button>
+      <div class="note" data-i18n="tokenNote"></div>
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:6px" onclick="logOut()" data-i18n="logOut"></button>
+  </section>
+</main>
+
+<nav id="nav"></nav>
+</div><!-- /appShell -->
+<div id="toast"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+/* ============ Supabase ============ */
+const SUPABASE_URL = 'https://jaedusekjrijaximilrd.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_t0sG1OUmzGYcUNdVvr2n1Q_28x94U4v';
+const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+let user = null;
+
+/* ============ local prefs (language + map token only) ============ */
+const store = (() => {
+  let mem = {}, ok = false;
+  try { localStorage.setItem('__t','1'); localStorage.removeItem('__t'); ok = true; } catch(e){}
+  return {
+    get(k, d){ try { const v = ok ? localStorage.getItem(k) : mem[k]; return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+    set(k, v){ const s = JSON.stringify(v); if (ok) { try { localStorage.setItem(k, s); } catch(e){ mem[k] = s; } } else mem[k] = s; }
+  };
+})();
+
+/* ============ bird database ============ */
+const BIRDS = [
+ {id:'passer_domesticus', latin:'Passer domesticus', name:{en:'House Sparrow',da:'Gråspurv'},
+  size:'14–16 cm', status:'LC', c1:'#8a6f4d', c2:'#5a4632',
+  habitat:{en:'Towns, farms and gardens; nests near buildings.',da:'Byer, gårde og haver; yngler nær bygninger.'}},
+ {id:'passer_montanus', latin:'Passer montanus', name:{en:'Eurasian Tree Sparrow',da:'Skovspurv'},
+  size:'12.5–14 cm', status:'LC', c1:'#a3794a', c2:'#6e4f2e',
+  habitat:{en:'Farmland edges, hedgerows and rural gardens.',da:'Landbrugsland, levende hegn og landlige haver.'}},
+ {id:'parus_major', latin:'Parus major', name:{en:'Great Tit',da:'Musvit'},
+  size:'13.5–15 cm', status:'LC', c1:'#e3c832', c2:'#2b3d2f',
+  habitat:{en:'Woodland, parks and gardens; frequent at feeders.',da:'Skov, parker og haver; hyppig ved foderbrættet.'}},
+ {id:'cyanistes_caeruleus', latin:'Cyanistes caeruleus', name:{en:'Eurasian Blue Tit',da:'Blåmejse'},
+  size:'10.5–12 cm', status:'LC', c1:'#4a90c4', c2:'#e8d34e',
+  habitat:{en:'Deciduous woodland, hedges and gardens.',da:'Løvskov, hække og haver.'}},
+ {id:'turdus_merula', latin:'Turdus merula', name:{en:'Common Blackbird',da:'Solsort'},
+  size:'23.5–29 cm', status:'LC', c1:'#2b2b2b', c2:'#e8a13c',
+  habitat:{en:'Gardens, parks and woodland; forages on lawns.',da:'Haver, parker og skov; fouragerer på græsplæner.'}},
+ {id:'fringilla_coelebs', latin:'Fringilla coelebs', name:{en:'Common Chaffinch',da:'Bogfinke'},
+  size:'14–16 cm', status:'LC', c1:'#c4785a', c2:'#5d7085',
+  habitat:{en:'Woodland, parks and gardens; one of Denmark’s most numerous birds.',da:'Skov, parker og haver; en af Danmarks talrigeste fugle.'}},
+ {id:'chloris_chloris', latin:'Chloris chloris', name:{en:'European Greenfinch',da:'Grønirisk'},
+  size:'14–16 cm', status:'LC', c1:'#8faf3e', c2:'#c9c93c',
+  habitat:{en:'Gardens, hedges and open woodland; declining locally in Denmark.',da:'Haver, hække og åben skov; i lokal tilbagegang i Danmark.'}},
+ {id:'erithacus_rubecula', latin:'Erithacus rubecula', name:{en:'European Robin',da:'Rødhals'},
+  size:'12.5–14 cm', status:'LC', c1:'#d3552e', c2:'#7d7463',
+  habitat:{en:'Woodland undergrowth, hedges and shady gardens.',da:'Skovbund, hække og skyggefulde haver.'}},
+ {id:'pica_pica', latin:'Pica pica', name:{en:'Eurasian Magpie',da:'Husskade'},
+  size:'40–51 cm', status:'LC', c1:'#1f1f28', c2:'#eef0f2',
+  habitat:{en:'Open country with trees, towns and gardens.',da:'Åbent land med træer, byer og haver.'}},
+ {id:'columba_palumbus', latin:'Columba palumbus', name:{en:'Common Wood Pigeon',da:'Ringdue'},
+  size:'38–44.5 cm', status:'LC', c1:'#9aa3b0', c2:'#c5c9d1',
+  habitat:{en:'Woodland, farmland, parks and gardens.',da:'Skov, landbrugsland, parker og haver.'}}
+];
+const birdById = id => BIRDS.find(b => b.id === id);
+function birdSVG(fill){
+  return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="${fill}" d="M14 40c-4-1-8-4-10-8 3 0 5 0 7-1-3-2-5-6-5-10 2 2 5 3 8 3 2-6 8-11 15-11 8 0 15 6 16 14l12-5-8 10c1 12-8 22-21 22-4 0-8-1-11-3l-8 5 3-8c-2-2-3-5-4-8z" transform="scale(.9) translate(4 4)"/></svg>`;
+}
+function avatarHTML(bird, cls){
+  return `<div class="avatar ${cls||''}" style="background:linear-gradient(135deg,${bird.c2}22,${bird.c1}44)">${birdSVG(bird.c1)}</div>`;
+}
+
+/* ============ i18n ============ */
+const I18N = {
+ en:{tagline:'BIRD JOURNAL · DENMARK', timeline:'Timeline', timelineSub:'Your logged sightings, newest first.',
+  map:'Map', mapSub:'Your sightings and shared sightings from other watchers.',
+  cadastral:'Cadastral parcels', community:'Community', myLocation:'My location',
+  mySightings:'My sightings', otherSightings:'Other watchers',
+  newSighting:'New sighting', logSub:'Record a bird observed on your property.',
+  species:'Species', when:'When', where:'Where',
+  useMyLocation:'Pinpoint my location', locHint:'Tap the button, then fine-tune by dragging the pin.',
+  photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
+  notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
+  save:'Save sighting', guide:'Field guide', guideSub:'The 10 most common garden birds in Denmark. Tap a bird for details.',
+  badges:'Badges', badgesSub:'Rewards for your growing life list.',
+  milestoneBadges:'Milestones', speciesBadges:'Species badges',
+  profile:'Profile',
+  sightings:'Sightings', uniqueSpecies:'Species', badgesEarned:'Badges',
+  displayName:'Display name', saveProfile:'Save name',
+  cloudNote:'Your sightings, photos and badges are stored in your Bask account and follow you across devices.',
+  dfToken:'Cadastral map token', saveToken:'Save token',
+  tokenNote:'The parcel-boundary overlay (Matrikelkortet) uses the free Danish Dataforsyningen service. Create a free user at dataforsyningen.dk, generate a token, and paste it here. Stored on this device.',
+  latinName:'Scientific name', sizeLbl:'Size', statusLbl:'Conservation status (IUCN)', habitatLbl:'Habitat',
+  lc:'Least Concern', seen:'Seen', notSeen:'Not yet observed',
+  firstSeen:'First seen', emptyTimeline:'No sightings yet. Log your first bird under “New sighting”!',
+  needSpecies:'Please choose a species.', needLocation:'Please pinpoint the location.',
+  saved:'Sighting saved!', badgeUnlocked:'Badge unlocked:', deleted:'Sighting deleted.',
+  confirmDelete:'Delete this sighting?', del:'delete', saving:'Saving…',
+  locating:'Locating…', locOk:'Location set — drag the pin to fine-tune.', locErr:'Could not get location. Drag the pin manually.',
+  tokenMissing:'Add your Dataforsyningen token under Profile to show cadastral parcels.',
+  b1:'First Bird', b5:'Five Species', b10:'Full House — all 10!',
+  b1d:'Observe your first species', b5d:'Observe 5 different species', b10d:'Observe all 10 species',
+  photoTip:'Photo added ✓', you:'You', otherUser:'Another watcher',
+  email:'Email', password:'Password', logIn:'Log in', signUp:'Create account', logOut:'Log out',
+  noAccount:'No account yet?', haveAccount:'Already have an account?',
+  authWorking:'Working…', signupOk:'Account created! You are now logged in.',
+  signupConfirm:'Account created — check your email to confirm, then log in.',
+  loadErr:'Could not load data. Check your connection and reload.'},
+ da:{tagline:'FUGLEDAGBOG · DANMARK', timeline:'Tidslinje', timelineSub:'Dine loggede observationer, nyeste først.',
+  map:'Kort', mapSub:'Dine observationer og delte observationer fra andre fuglekiggere.',
+  cadastral:'Matrikelkort', community:'Fællesskab', myLocation:'Min placering',
+  mySightings:'Mine observationer', otherSightings:'Andre fuglekiggere',
+  newSighting:'Ny observation', logSub:'Registrér en fugl set på din grund.',
+  species:'Art', when:'Hvornår', where:'Hvor',
+  useMyLocation:'Find min placering', locHint:'Tryk på knappen og finjustér ved at trække i nålen.',
+  photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
+  notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
+  save:'Gem observation', guide:'Felthåndbog', guideSub:'De 10 mest almindelige havefugle i Danmark. Tryk på en fugl for detaljer.',
+  badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
+  milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
+  profile:'Profil',
+  sightings:'Observationer', uniqueSpecies:'Arter', badgesEarned:'Emblemer',
+  displayName:'Visningsnavn', saveProfile:'Gem navn',
+  cloudNote:'Dine observationer, fotos og emblemer gemmes på din Bask-konto og følger dig på tværs af enheder.',
+  dfToken:'Matrikelkort-token', saveToken:'Gem token',
+  tokenNote:'Matrikel-laget bruger den gratis tjeneste Dataforsyningen. Opret en gratis bruger på dataforsyningen.dk, generér en token og indsæt den her. Gemmes på denne enhed.',
+  latinName:'Videnskabeligt navn', sizeLbl:'Størrelse', statusLbl:'Bevaringsstatus (IUCN)', habitatLbl:'Levested',
+  lc:'Livskraftig', seen:'Set', notSeen:'Endnu ikke observeret',
+  firstSeen:'Først set', emptyTimeline:'Ingen observationer endnu. Log din første fugl under “Ny observation”!',
+  needSpecies:'Vælg venligst en art.', needLocation:'Angiv venligst placeringen.',
+  saved:'Observation gemt!', badgeUnlocked:'Emblem låst op:', deleted:'Observation slettet.',
+  confirmDelete:'Slet denne observation?', del:'slet', saving:'Gemmer…',
+  locating:'Finder placering…', locOk:'Placering sat — træk i nålen for at finjustere.', locErr:'Kunne ikke finde placering. Træk nålen manuelt.',
+  tokenMissing:'Tilføj din Dataforsyningen-token under Profil for at vise matrikelkortet.',
+  b1:'Første Fugl', b5:'Fem Arter', b10:'Fuldt Hus — alle 10!',
+  b1d:'Observér din første art', b5d:'Observér 5 forskellige arter', b10d:'Observér alle 10 arter',
+  photoTip:'Foto tilføjet ✓', you:'Dig', otherUser:'Anden fuglekigger',
+  email:'Email', password:'Adgangskode', logIn:'Log ind', signUp:'Opret konto', logOut:'Log ud',
+  noAccount:'Ingen konto endnu?', haveAccount:'Har du allerede en konto?',
+  authWorking:'Arbejder…', signupOk:'Konto oprettet! Du er nu logget ind.',
+  signupConfirm:'Konto oprettet — bekræft via din email, og log derefter ind.',
+  loadErr:'Kunne ikke hente data. Tjek din forbindelse og genindlæs.'}
+};
+let lang = store.get('lang','en');
+const t = k => (I18N[lang][k] !== undefined ? I18N[lang][k] : k);
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll('.lang-btn').forEach(b => b.textContent = lang === 'en' ? 'Dansk' : 'English');
+  document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
+  setAuthMode(authMode);
+  renderNav(); renderTimeline(); renderGuide(); renderBadges(); renderSpeciesGrid(); updateStats();
+  if (map) refreshMapMarkers();
+}
+function toggleLang(){ lang = lang === 'en' ? 'da' : 'en'; store.set('lang', lang); applyLang(); }
+
+/* ============ auth ============ */
+let authMode = 'login';
+function setAuthMode(m){
+  authMode = m;
+  document.getElementById('authMainBtn').textContent = m === 'login' ? t('logIn') : t('signUp');
+  document.getElementById('authAltRow').innerHTML = m === 'login'
+    ? `<span>${t('noAccount')}</span> <a onclick="setAuthMode('signup')">${t('signUp')}</a>`
+    : `<span>${t('haveAccount')}</span> <a onclick="setAuthMode('login')">${t('logIn')}</a>`;
+  document.getElementById('authErr').textContent = '';
+}
+async function doAuth(){
+  const email = document.getElementById('authEmail').value.trim();
+  const pass = document.getElementById('authPass').value;
+  const err = document.getElementById('authErr');
+  const btn = document.getElementById('authMainBtn');
+  err.textContent = ''; btn.disabled = true; btn.textContent = t('authWorking');
+  try {
+    if (authMode === 'signup'){
+      const { data, error } = await db.auth.signUp({ email, password: pass });
+      if (error) throw error;
+      if (!data.session){ err.textContent = t('signupConfirm'); setAuthMode('login'); return; }
+      toast(t('signupOk'));
+    } else {
+      const { error } = await db.auth.signInWithPassword({ email, password: pass });
+      if (error) throw error;
+    }
+  } catch(e){ err.textContent = e.message || String(e); }
+  finally { btn.disabled = false; setAuthMode(authMode); }
+}
+async function logOut(){ await db.auth.signOut(); }
+function updateAuthUI(){
+  document.getElementById('authView').classList.toggle('show', !user);
+  document.getElementById('appShell').classList.toggle('show', !!user);
+  if (user) document.getElementById('profEmail').textContent = user.email;
+}
+db.auth.onAuthStateChange((_ev, session) => {
+  const newUser = session ? session.user : null;
+  const changed = (newUser && newUser.id) !== (user && user.id);
+  user = newUser;
+  updateAuthUI();
+  if (user && changed) loadCloudData();
+  if (!user){ sightings = []; unlockedBadges = {}; renderTimeline(); renderBadges(); }
+});
+
+/* ============ cloud data ============ */
+let sightings = [];        // rows from supabase
+let unlockedBadges = {};   // badge_id -> unlocked_at
+let communityRows = [];
+let profileName = '';
+
+async function loadCloudData(){
+  try {
+    const [sRes, bRes, pRes] = await Promise.all([
+      db.from('sightings').select('*').eq('user_id', user.id).order('seen_at', {ascending:false}),
+      db.from('user_badges').select('*'),
+      db.from('profiles').select('*').eq('id', user.id).maybeSingle()
+    ]);
+    if (sRes.error) throw sRes.error;
+    sightings = sRes.data || [];
+    unlockedBadges = {};
+    (bRes.data || []).forEach(r => unlockedBadges[r.badge_id] = r.unlocked_at);
+    if (pRes.data) profileName = pRes.data.display_name || '';
+    else await db.from('profiles').insert({ id: user.id, display_name: '' });
+    renderTimeline(); renderBadges(); renderGuide(); updateStats();
+    loadCommunity();
+  } catch(e){ toast(t('loadErr')); }
+}
+async function loadCommunity(){
+  const { data } = await db.from('sightings')
+    .select('bird_id,lat,lng,seen_at,photo_path')
+    .eq('is_public', true).neq('user_id', user.id).limit(500);
+  communityRows = data || [];
+  refreshMapMarkers();
+}
+function photoUrl(path){
+  return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null;
+}
+
+/* ============ navigation ============ */
+const NAV = [
+ {id:'timeline', icon:'<path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="9"/>'},
+ {id:'map', icon:'<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/>'},
+ {id:'newSighting', icon:'<circle cx="12" cy="12" r="9"/><path d="M12 8v8M8 12h8"/>', view:'log'},
+ {id:'guide', icon:'<path d="M4 19V5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19a2 2 0 0 0 2 2h13"/>'},
+ {id:'badges', icon:'<circle cx="12" cy="9" r="6"/><path d="m8.5 14-2 7 5.5-3 5.5 3-2-7"/>'},
+ {id:'profile', icon:'<circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/>'}
+];
+let currentView = 'timeline';
+function renderNav(){
+  document.getElementById('nav').innerHTML = NAV.map(n => {
+    const v = n.view || n.id;
+    return `<button class="${currentView===v?'active':''}" onclick="showView('${v}')">
+      <svg viewBox="0 0 24 24">${n.icon}</svg>${t(n.id)}</button>`;
+  }).join('');
+}
+function showView(v){
+  currentView = v;
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'view-'+v));
+  renderNav();
+  if (v === 'map') initMap();
+  if (v === 'log') { initMiniMap(); if(!document.getElementById('logWhen').value) setNow(); }
+  if (v === 'badges') renderBadges();
+  if (v === 'timeline') renderTimeline();
+  if (v === 'profile') updateStats();
+  window.scrollTo(0,0);
+}
+
+/* ============ timeline ============ */
+function fmtDate(iso){
+  return new Date(iso).toLocaleString(lang === 'da' ? 'da-DK' : 'en-GB',
+    {day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit'});
+}
+function escapeHtml(s){ const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+function renderTimeline(){
+  const el = document.getElementById('timelineList');
+  if (!el) return;
+  if (!sightings.length){ el.innerHTML = `<div class="empty">${t('emptyTimeline')}</div>`; return; }
+  el.innerHTML = sightings.map(s => {
+    const b = birdById(s.bird_id); if (!b) return '';
+    const purl = photoUrl(s.photo_path);
+    return `<div class="card tl-item">
+      ${avatarHTML(b)}
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:baseline;gap:8px">
+          <div class="tl-date">${fmtDate(s.seen_at)}</div>
+          <button class="del-btn" onclick="deleteSighting('${s.id}')">${t('del')}</button>
+        </div>
+        <div class="tl-name">${b.name[lang]}</div>
+        <div class="tl-latin">${b.latin}</div>
+        ${s.notes ? `<div class="tl-note">${escapeHtml(s.notes)}</div>` : ''}
+        ${purl ? `<img class="tl-photo" src="${purl}" alt="${b.name[lang]}" loading="lazy">` : ''}
+        <div class="tl-meta">
+          <span class="chip">📍 ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
+          ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function deleteSighting(id){
+  if (!confirm(t('confirmDelete'))) return;
+  const row = sightings.find(s => s.id === id);
+  await db.from('sightings').delete().eq('id', id);
+  if (row && row.photo_path) await db.storage.from('photos').remove([row.photo_path]);
+  sightings = sightings.filter(s => s.id !== id);
+  renderTimeline(); refreshMapMarkers(); updateStats(); toast(t('deleted'));
+}
+
+/* ============ log form ============ */
+let selectedBird = null, logLatLng = null, logPhoto = null;
+let miniMap = null, miniMarker = null;
+function renderSpeciesGrid(){
+  const el = document.getElementById('speciesGrid'); if (!el) return;
+  el.innerHTML = BIRDS.map(b =>
+    `<div class="sp-opt ${selectedBird===b.id?'sel':''}" onclick="selectBird('${b.id}')">
+      ${avatarHTML(b,'sm')}<span>${b.name[lang]}</span></div>`).join('');
+}
+function selectBird(id){ selectedBird = id; renderSpeciesGrid(); }
+function setNow(){
+  const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+  document.getElementById('logWhen').value = d.toISOString().slice(0,16);
+}
+function initMiniMap(){
+  setTimeout(() => {
+    if (!miniMap){
+      miniMap = L.map('miniMap').setView([56.0, 10.5], 6);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        {maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap · © CARTO'}).addTo(miniMap);
+      miniMap.on('click', e => placeMiniMarker(e.latlng.lat, e.latlng.lng));
+    }
+    miniMap.invalidateSize();
+  }, 60);
+}
+function placeMiniMarker(lat, lng, zoomTo){
+  logLatLng = {lat, lng};
+  if (miniMarker) miniMarker.setLatLng([lat,lng]);
+  else {
+    miniMarker = L.marker([lat,lng], {draggable:true}).addTo(miniMap);
+    miniMarker.on('dragend', () => { const p = miniMarker.getLatLng(); logLatLng = {lat:p.lat, lng:p.lng}; });
+  }
+  if (zoomTo) miniMap.setView([lat,lng], 17);
+}
+function pinpointMe(){
+  const st = document.getElementById('locStatus');
+  st.textContent = t('locating');
+  if (!navigator.geolocation){ st.textContent = t('locErr'); return; }
+  navigator.geolocation.getCurrentPosition(
+    p => { placeMiniMarker(p.coords.latitude, p.coords.longitude, true); st.textContent = t('locOk'); },
+    () => { st.textContent = t('locErr'); }, {enableHighAccuracy:true, timeout:10000});
+}
+function handlePhoto(file){
+  if (!file) return;
+  const img = new Image();
+  img.onload = () => {
+    const max = 1200, sc = Math.min(1, max/Math.max(img.width, img.height));
+    const c = document.createElement('canvas');
+    c.width = img.width*sc; c.height = img.height*sc;
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    logPhoto = c.toDataURL('image/jpeg', .82);
+    const pv = document.getElementById('photoPreview');
+    pv.src = logPhoto; pv.style.display = 'block';
+    toast(t('photoTip'));
+  };
+  img.src = URL.createObjectURL(file);
+}
+document.getElementById('camInput').addEventListener('change', e => handlePhoto(e.target.files[0]));
+document.getElementById('galInput').addEventListener('change', e => handlePhoto(e.target.files[0]));
+
+function dataUrlToBlob(dataUrl){
+  const [meta, b64] = dataUrl.split(',');
+  const mime = meta.match(/data:([^;]+)/)[1];
+  const bin = atob(b64), arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return new Blob([arr], {type: mime});
+}
+
+async function saveSighting(){
+  if (!selectedBird) return toast(t('needSpecies'));
+  if (!logLatLng) return toast(t('needLocation'));
+  const btn = document.getElementById('saveBtn');
+  btn.disabled = true; btn.textContent = t('saving');
+  try {
+    const whenVal = document.getElementById('logWhen').value;
+    const row = {
+      user_id: user.id,
+      bird_id: selectedBird,
+      seen_at: (whenVal ? new Date(whenVal) : new Date()).toISOString(),
+      lat: logLatLng.lat, lng: logLatLng.lng,
+      notes: document.getElementById('logNotes').value.trim() || null,
+      is_public: document.getElementById('logPublic').checked
+    };
+    const { data, error } = await db.from('sightings').insert(row).select().single();
+    if (error) throw error;
+    let saved = data;
+    if (logPhoto){
+      const path = `${user.id}/${saved.id}.jpg`;
+      const up = await db.storage.from('photos').upload(path, dataUrlToBlob(logPhoto), {contentType:'image/jpeg', upsert:true});
+      if (!up.error){
+        const upd = await db.from('sightings').update({photo_path: path}).eq('id', saved.id).select().single();
+        if (upd.data) saved = upd.data;
+      }
+    }
+    sightings.unshift(saved);
+    const newBadges = await checkBadges();
+    selectedBird = null; logPhoto = null;
+    document.getElementById('logNotes').value = '';
+    const pv = document.getElementById('photoPreview'); pv.style.display = 'none';
+    document.getElementById('camInput').value = ''; document.getElementById('galInput').value = '';
+    renderSpeciesGrid(); setNow(); refreshMapMarkers(); updateStats();
+    toast(newBadges.length ? `${t('saved')} 🏅 ${t('badgeUnlocked')} ${newBadges.join(', ')}` : t('saved'));
+    showView('timeline');
+  } catch(e){ toast((e && e.message) || String(e)); }
+  finally { btn.disabled = false; btn.textContent = t('save'); }
+}
+
+/* ============ badges ============ */
+const MILESTONES = [
+ {id:'m1', n:1, icon:'🐣', name:() => t('b1'), desc:() => t('b1d')},
+ {id:'m5', n:5, icon:'🪶', name:() => t('b5'), desc:() => t('b5d')},
+ {id:'m10', n:10, icon:'👑', name:() => t('b10'), desc:() => t('b10d')}
+];
+function uniqueSpeciesSeen(){ return [...new Set(sightings.map(s => s.bird_id))]; }
+async function checkBadges(){
+  const seen = uniqueSpeciesSeen(), newly = [], rows = [];
+  seen.forEach(id => {
+    if (!unlockedBadges['sp_'+id]){
+      unlockedBadges['sp_'+id] = new Date().toISOString();
+      rows.push({user_id: user.id, badge_id: 'sp_'+id});
+      newly.push(birdById(id).name[lang]);
+    }
+  });
+  MILESTONES.forEach(m => {
+    if (seen.length >= m.n && !unlockedBadges[m.id]){
+      unlockedBadges[m.id] = new Date().toISOString();
+      rows.push({user_id: user.id, badge_id: m.id});
+      newly.push(m.name());
+    }
+  });
+  if (rows.length) await db.from('user_badges').upsert(rows);
+  renderBadges();
+  return newly;
+}
+function renderBadges(){
+  const mEl = document.getElementById('milestoneBadges'); if (!mEl) return;
+  mEl.innerHTML = MILESTONES.map(m => {
+    const u = unlockedBadges[m.id];
+    return `<div class="badge ${u?'':'locked'}"><div class="medal">${m.icon}</div>
+      <div class="bname">${m.name()}</div><div>${m.desc()}</div>
+      ${u ? `<div class="bdate">${fmtDate(u)}</div>` : ''}</div>`;
+  }).join('');
+  document.getElementById('speciesBadges').innerHTML = BIRDS.map(b => {
+    const u = unlockedBadges['sp_'+b.id];
+    return `<div class="badge ${u?'':'locked'}">
+      <div class="medal" style="background:radial-gradient(circle at 35% 30%,${b.c1}66,${b.c1})">${birdSVG('#fff')}</div>
+      <div class="bname">${b.name[lang]}</div>
+      <div class="bdate">${u ? t('firstSeen')+': '+fmtDate(u) : t('notSeen')}</div></div>`;
+  }).join('');
+}
+
+/* ============ field guide ============ */
+function renderGuide(){
+  const el = document.getElementById('guideList'); if (!el) return;
+  const seen = uniqueSpeciesSeen();
+  el.innerHTML = BIRDS.map(b => `
+    <div class="card">
+      <div class="guide-item" onclick="this.nextElementSibling.classList.toggle('open')">
+        ${avatarHTML(b)}
+        <div><div class="tl-name">${b.name[lang]}</div><div class="tl-latin">${b.latin}</div></div>
+        ${seen.includes(b.id) ? `<div class="seen-mark">✓ ${t('seen')}</div>` : ''}
+      </div>
+      <dl class="guide-detail">
+        <dt>${t('latinName')}</dt><dd><i>${b.latin}</i></dd>
+        <dt>${t('sizeLbl')}</dt><dd>${b.size}</dd>
+        <dt>${t('statusLbl')}</dt><dd class="status-lc">● ${t('lc')} (LC)</dd>
+        <dt>${t('habitatLbl')}</dt><dd>${b.habitat[lang]}</dd>
+      </dl>
+    </div>`).join('');
+}
+
+/* ============ main map ============ */
+let map = null, cadLayer = null, myLayer = null, commLayer = null;
+function makeDot(color){
+  return L.divIcon({className:'', iconSize:[16,16], iconAnchor:[8,8],
+    html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fffdf7;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`});
+}
+function initMap(){
+  setTimeout(() => {
+    if (!map){
+      map = L.map('map').setView([56.0, 10.5], 7);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+        {maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
+      myLayer = L.layerGroup().addTo(map);
+      commLayer = L.layerGroup().addTo(map);
+      document.getElementById('cadToggle').addEventListener('change', toggleCadastral);
+      document.getElementById('commToggle').addEventListener('change', e => {
+        if (e.target.checked) commLayer.addTo(map); else map.removeLayer(commLayer);
+      });
+      refreshMapMarkers();
+    }
+    map.invalidateSize();
+  }, 60);
+}
+function refreshMapMarkers(){
+  if (!map) return;
+  myLayer.clearLayers(); commLayer.clearLayers();
+  sightings.forEach(s => {
+    const b = birdById(s.bird_id); if (!b) return;
+    const purl = photoUrl(s.photo_path);
+    L.marker([s.lat, s.lng], {icon: makeDot('#2d5a3d')}).addTo(myLayer)
+      .bindPopup(`<div class="popup-bird">${b.name[lang]}</div>
+        <div class="popup-sub"><i>${b.latin}</i><br>${fmtDate(s.seen_at)} · ${t('you')}</div>
+        ${purl ? `<img src="${purl}" style="width:150px;border-radius:8px;margin-top:6px">` : ''}`);
+  });
+  communityRows.forEach(c => {
+    const b = birdById(c.bird_id); if (!b) return;
+    const purl = photoUrl(c.photo_path);
+    L.marker([c.lat, c.lng], {icon: makeDot('#c2683f')}).addTo(commLayer)
+      .bindPopup(`<div class="popup-bird">${b.name[lang]}</div>
+        <div class="popup-sub"><i>${b.latin}</i><br>${fmtDate(c.seen_at)} · ${t('otherUser')}</div>
+        ${purl ? `<img src="${purl}" style="width:150px;border-radius:8px;margin-top:6px">` : ''}`);
+  });
+}
+function toggleCadastral(e){
+  const token = store.get('dfToken','');
+  if (e.target.checked){
+    if (!token){ toast(t('tokenMissing')); e.target.checked = false; return; }
+    cadLayer = L.tileLayer.wms('https://api.dataforsyningen.dk/wms/MatGaeldendeOgForeloebigWMS_DAF', {
+      layers:'MatrikelSkel_Gaeldende,Centroide_Gaeldende', format:'image/png',
+      transparent:'TRUE', version:'1.3.0',
+      maxZoom:19, minZoom:13, token: token, attribution:'Matrikelkort © Dataforsyningen'
+    }).addTo(map);
+    if (map.getZoom() < 13) toast('Zoom ind for at se matrikler / zoom in to see parcels');
+  } else if (cadLayer){ map.removeLayer(cadLayer); cadLayer = null; }
+}
+function centerOnMe(){
+  if (!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    p => map.setView([p.coords.latitude, p.coords.longitude], 16),
+    () => toast(t('locErr')), {enableHighAccuracy:true, timeout:10000});
+}
+
+/* ============ profile ============ */
+function updateStats(){
+  const el = document.getElementById('statSightings'); if (!el) return;
+  el.textContent = sightings.length;
+  document.getElementById('statSpecies').textContent = uniqueSpeciesSeen().length;
+  document.getElementById('statBadges').textContent = Object.keys(unlockedBadges).length;
+  document.getElementById('profName').value = profileName;
+  document.getElementById('dfToken').value = store.get('dfToken','');
+}
+async function saveProfile(){
+  profileName = document.getElementById('profName').value.trim();
+  await db.from('profiles').upsert({ id: user.id, display_name: profileName });
+  toast('✓');
+}
+function saveToken(){
+  store.set('dfToken', document.getElementById('dfToken').value.trim()); toast('✓');
+}
+
+/* ============ toast ============ */
+let toastTimer = null;
+function toast(msg){
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), 3200);
+}
+
+/* ============ init ============ */
+applyLang();
+setNow();
+db.auth.getSession().then(({data}) => {
+  user = data.session ? data.session.user : null;
+  updateAuthUI();
+  if (user) loadCloudData();
+});
+</script>
+</body>
+</html>
