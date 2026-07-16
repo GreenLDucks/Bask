@@ -203,6 +203,7 @@ textarea{resize:vertical;min-height:64px}
     <div class="map-controls">
       <label class="toggle"><input type="checkbox" id="cadToggle"> <span data-i18n="cadastral"></span></label>
       <label class="toggle"><input type="checkbox" id="commToggle" checked> <span data-i18n="community"></span></label>
+      <label class="toggle"><input type="checkbox" id="matToggle" checked> <span data-i18n="matrikelLayer"></span></label>
       <button class="btn btn-secondary" style="padding:5px 11px;font-size:.8rem" onclick="centerOnMe()">📍 <span data-i18n="myLocation"></span></button>
     </div>
     <div id="map"></div>
@@ -225,7 +226,7 @@ textarea{resize:vertical;min-height:64px}
     <img id="photoPreview" alt="">
     <button class="btn btn-secondary" id="cropBtn" style="display:none;margin-top:8px" onclick="openCrop()">✂️ <span data-i18n="cropBtn"></span></button>
     <label class="fld" data-i18n="species"></label>
-    <input type="text" id="speciesSearch" data-i18n-ph="searchSpecies" style="margin-bottom:8px" oninput="speciesFilter=this.value.trim().toLowerCase();renderSpeciesGrid()">
+    <input type="text" id="speciesSearch" data-i18n-ph="searchSpecies" style="margin-bottom:8px" oninput="speciesFilter=this.value.trim();renderSpeciesGrid()">
     <div class="species-grid" id="speciesGrid"></div>
     <label class="fld" data-i18n="when"></label>
     <input type="datetime-local" id="logWhen">
@@ -559,6 +560,7 @@ const I18N = {
  en:{tagline:'BIRD JOURNAL · DENMARK', timeline:'Timeline', timelineSub:'Your logged sightings, newest first.',
   map:'Map', mapSub:'Your sightings and shared sightings from other watchers.',
   cadastral:'Cadastral parcels', community:'Community', myLocation:'My location',
+  matrikelLayer:'Sightings by parcel', matrikelWord:'Parcel', matSightings:'sightings', matSpecies:'species', matContributors:'contributors',
   mySightings:'My sightings', otherSightings:'Other watchers',
   newSighting:'New sighting', logSub:'Record a bird observed on your property.',
   species:'Species', when:'When', where:'Where',
@@ -597,6 +599,7 @@ const I18N = {
  da:{tagline:'FUGLEDAGBOG · DANMARK', timeline:'Tidslinje', timelineSub:'Dine loggede observationer, nyeste først.',
   map:'Kort', mapSub:'Dine observationer og delte observationer fra andre fuglekiggere.',
   cadastral:'Matrikelkort', community:'Fællesskab', myLocation:'Min placering',
+  matrikelLayer:'Observationer pr. matrikel', matrikelWord:'Matrikel', matSightings:'observationer', matSpecies:'arter', matContributors:'bidragydere',
   mySightings:'Mine observationer', otherSightings:'Andre fuglekiggere',
   newSighting:'Ny observation', logSub:'Registrér en fugl set på din grund.',
   species:'Art', when:'Hvornår', where:'Hvor',
@@ -711,14 +714,45 @@ async function loadCloudData(){
     else await db.from('profiles').insert({ id: user.id, display_name: '' });
     renderTimeline(); renderBadges(); renderGuide(); updateStats();
     loadCommunity();
+    backfillMatrikel();
   } catch(e){ toast(t('loadErr')); }
 }
 async function loadCommunity(){
-  const { data } = await db.from('sightings')
-    .select('bird_id,lat,lng,seen_at,photo_path')
+  let res = await db.from('sightings')
+    .select('bird_id,lat,lng,seen_at,photo_path,user_id,matrikel_id,matrikel_label,matrikel_geojson')
     .eq('is_public', true).neq('user_id', user.id).limit(500);
-  communityRows = data || [];
+  if (res.error) res = await db.from('sightings')
+    .select('bird_id,lat,lng,seen_at,photo_path,user_id')
+    .eq('is_public', true).neq('user_id', user.id).limit(500);
+  communityRows = res.data || [];
   refreshMapMarkers();
+}
+/* reverse-geocode a coordinate to the cadastral parcel (matrikel) it falls on */
+async function reverseMatrikel(lat, lng){
+  try {
+    const r = await fetch(`https://api.dataforsyningen.dk/jordstykker/reverse?x=${lng}&y=${lat}&srid=4326&format=geojson`);
+    if (!r.ok) return null;
+    const g = await r.json();
+    if (!g || !g.geometry || !g.properties) return null;
+    const p = g.properties;
+    return { id: p.ejerlavkode + '-' + p.matrikelnr,
+             label: p.matrikelnr + (p.ejerlavnavn ? ', ' + p.ejerlavnavn : ''),
+             geojson: JSON.stringify(g.geometry) };
+  } catch(e){ return null; }
+}
+/* assign matrikel to any of the user's own sightings that don't have one yet */
+async function backfillMatrikel(){
+  const todo = sightings.filter(s => !s.matrikel_id && s.lat != null && s.lng != null);
+  if (!todo.length) return;
+  let changed = false;
+  for (const s of todo){
+    const m = await reverseMatrikel(s.lat, s.lng);
+    if (!m) continue;
+    const { error } = await db.from('sightings')
+      .update({matrikel_id:m.id, matrikel_label:m.label, matrikel_geojson:m.geojson}).eq('id', s.id);
+    if (!error){ s.matrikel_id=m.id; s.matrikel_label=m.label; s.matrikel_geojson=m.geojson; changed=true; }
+  }
+  if (changed){ renderTimeline(); refreshMapMarkers(); }
 }
 function photoUrl(path){
   return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null;
@@ -815,6 +849,7 @@ function renderTimeline(){
         ${photoThumbHTML(s.photo_path, b.name[lang], 'tl-photo')}
         <div class="tl-meta">
           <span class="chip">📍 ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
+          ${s.matrikel_label ? `<span class="chip">🏠 ${escapeHtml(s.matrikel_label)}</span>` : ''}
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
         </div>
       </div>
@@ -827,6 +862,7 @@ async function deleteSighting(id){
   await db.from('sightings').delete().eq('id', id);
   if (row && row.photo_path) await db.storage.from('photos').remove([row.photo_path, row.photo_path.replace(/\.jpg$/i, '_thumb.jpg')]);
   sightings = sightings.filter(s => s.id !== id);
+  await reconcileBadges();
   renderTimeline(); refreshMapMarkers(); updateStats(); toast(t('deleted'));
 }
 
@@ -834,10 +870,12 @@ async function deleteSighting(id){
 let selectedBird = null, logLatLng = null, logPhoto = null;
 let miniMap = null, miniMarker = null;
 let speciesFilter = '';
+function foldText(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a'); }
 function renderSpeciesGrid(){
   const el = document.getElementById('speciesGrid'); if (!el) return;
-  const list = BIRDS.filter(b => !speciesFilter ||
-    (b.name.en + ' ' + b.name.da + ' ' + b.latin).toLowerCase().includes(speciesFilter));
+  const q = foldText(speciesFilter);
+  const list = BIRDS.filter(b => !q ||
+    foldText(b.name.en + ' ' + b.name.da + ' ' + b.latin).includes(q));
   el.innerHTML = list.length ? list.map(b =>
     `<div class="sp-opt ${selectedBird===b.id?'sel':''}" onclick="selectBird('${b.id}')">
       ${avatarHTML(b,'sm')}<span>${b.name[lang]}</span></div>`).join('')
@@ -991,6 +1029,13 @@ async function saveSighting(){
         if (upd.data) saved = upd.data;
       }
     }
+    const mat = await reverseMatrikel(saved.lat, saved.lng);
+    if (mat){
+      const um = await db.from('sightings')
+        .update({matrikel_id:mat.id, matrikel_label:mat.label, matrikel_geojson:mat.geojson})
+        .eq('id', saved.id).select().single();
+      if (um.data) saved = um.data;
+    }
     sightings.unshift(saved);
     const newBadges = await checkBadges();
     selectedBird = null; logPhoto = null; logPhotoOriginal = null;
@@ -1051,6 +1096,22 @@ async function checkBadges(){
   renderBadges();
   return newly;
 }
+async function reconcileBadges(){
+  const seen = uniqueSpeciesSeen();
+  const fams = new Set(seen.map(id => BIRD_FAM[id]).filter(Boolean));
+  const ords = new Set([...fams].map(f => FAM2ORD[f]).filter(Boolean));
+  const valid = new Set();
+  seen.forEach(id => valid.add('sp_'+id));
+  MILESTONES.forEach(m => { if (seen.length >= m.n) valid.add(m.id); });
+  fams.forEach(f => valid.add('fam_'+f));
+  ords.forEach(o => valid.add('ord_'+o));
+  const revoke = Object.keys(unlockedBadges).filter(k => !valid.has(k));
+  if (revoke.length){
+    await db.from('user_badges').delete().eq('user_id', user.id).in('badge_id', revoke);
+    revoke.forEach(k => delete unlockedBadges[k]);
+  }
+  renderBadges();
+}
 function renderBadges(){
   const mEl = document.getElementById('milestoneBadges'); if (!mEl) return;
   mEl.innerHTML = MILESTONES.map(m => {
@@ -1066,11 +1127,14 @@ function renderBadges(){
       <div class="bdate">${sub}</div>
       ${u ? `<div class="bdate">${fmtDate(u)}</div>` : ''}</div>`;
   };
-  document.getElementById('orderBadges').innerHTML = Object.keys(ORDERS).map(o =>
+  document.getElementById('orderBadges').innerHTML = Object.keys(ORDERS)
+    .sort((a,b)=>(unlockedBadges['ord_'+a]?0:1)-(unlockedBadges['ord_'+b]?0:1)).map(o =>
     taxaBadge('ord_'+o, '🧭', (ORDERS[o][lang]||o), o)).join('');
-  document.getElementById('familyBadges').innerHTML = Object.keys(FAMILIES).map(f =>
+  document.getElementById('familyBadges').innerHTML = Object.keys(FAMILIES)
+    .sort((a,b)=>(unlockedBadges['fam_'+a]?0:1)-(unlockedBadges['fam_'+b]?0:1)).map(f =>
     taxaBadge('fam_'+f, '🪺', (FAMILIES[f][lang]||f), f)).join('');
-  document.getElementById('speciesBadges').innerHTML = BIRDS.map(b => {
+  document.getElementById('speciesBadges').innerHTML = [...BIRDS]
+    .sort((a,b)=>(unlockedBadges['sp_'+a.id]?0:1)-(unlockedBadges['sp_'+b.id]?0:1)).map(b => {
     const u = unlockedBadges['sp_'+b.id];
     return `<div class="badge ${u?'':'locked'}">
       <div class="medal" style="background:radial-gradient(circle at 35% 30%,${b.c1}66,${b.c1})">${birdSVG('#fff')}</div>
@@ -1102,7 +1166,7 @@ function renderGuide(){
 }
 
 /* ============ main map ============ */
-let map = null, cadLayer = null, myLayer = null, commLayer = null;
+let map = null, cadLayer = null, myLayer = null, commLayer = null, matrikelLayer = null;
 function makeDot(color){
   return L.divIcon({className:'', iconSize:[16,16], iconAnchor:[8,8],
     html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid #fffdf7;box-shadow:0 1px 4px rgba(0,0,0,.4)"></div>`});
@@ -1113,11 +1177,15 @@ function initMap(){
       map = L.map('map').setView([56.0, 10.5], 7);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         {maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap · © CARTO'}).addTo(map);
+      matrikelLayer = L.layerGroup().addTo(map);
       myLayer = L.layerGroup().addTo(map);
       commLayer = L.layerGroup().addTo(map);
       document.getElementById('cadToggle').addEventListener('change', toggleCadastral);
       document.getElementById('commToggle').addEventListener('change', e => {
         if (e.target.checked) commLayer.addTo(map); else map.removeLayer(commLayer);
+      });
+      document.getElementById('matToggle').addEventListener('change', e => {
+        if (e.target.checked) matrikelLayer.addTo(map); else map.removeLayer(matrikelLayer);
       });
       refreshMapMarkers();
     }
@@ -1143,6 +1211,29 @@ function refreshMapMarkers(){
       .bindPopup(`<div class="popup-bird">${b.name[lang]}</div>
         <div class="popup-sub"><i>${b.latin}</i><br>${fmtDate(c.seen_at)} · ${t('otherUser')}</div>
         ${popThumb(c.photo_path)}`);
+  });
+  renderMatrikelLayer();
+}
+/* draw clickable parcels that contain sightings, with per-parcel stats */
+function renderMatrikelLayer(){
+  if (!map || !matrikelLayer) return;
+  matrikelLayer.clearLayers();
+  const agg = {};
+  const add = r => {
+    if (!r.matrikel_id) return;
+    const g = agg[r.matrikel_id] || (agg[r.matrikel_id] = {label:r.matrikel_label||r.matrikel_id, geo:null, total:0, species:new Set(), users:new Set()});
+    g.total++; g.species.add(r.bird_id);
+    if (r.user_id) g.users.add(r.user_id);
+    if (!g.geo && r.matrikel_geojson){ try { g.geo = JSON.parse(r.matrikel_geojson); } catch(e){} }
+  };
+  sightings.forEach(s => add({matrikel_id:s.matrikel_id, matrikel_label:s.matrikel_label, matrikel_geojson:s.matrikel_geojson, bird_id:s.bird_id, user_id:s.user_id||user.id}));
+  communityRows.forEach(add);
+  Object.keys(agg).forEach(id => {
+    const g = agg[id]; if (!g.geo) return;
+    L.geoJSON(g.geo, {style:{color:'#2d5a3d', weight:2, fillColor:'#3f7a52', fillOpacity:.22}})
+      .addTo(matrikelLayer)
+      .bindPopup(`<div class="popup-bird">${t('matrikelWord')} ${g.label}</div>
+        <div class="popup-sub">${g.total} ${t('matSightings')} · ${g.species.size} ${t('matSpecies')} · ${g.users.size} ${t('matContributors')}</div>`);
   });
 }
 function toggleCadastral(e){
