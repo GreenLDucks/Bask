@@ -153,6 +153,12 @@ textarea{resize:vertical;min-height:64px}
 .crop-hint{color:#f7f3e8;font-size:.8rem;margin-top:12px;font-style:italic;text-align:center}
 .crop-btns{display:flex;gap:10px;margin-top:14px}
 .crop-btns .btn{padding:10px 22px}
+/* lightbox */
+#lightbox{position:fixed;inset:0;background:rgba(20,22,16,.94);z-index:3500;display:none;
+  align-items:center;justify-content:center;padding:14px;cursor:zoom-out}
+#lightbox.show{display:flex}
+#lightbox img{max-width:96vw;max-height:92vh;border-radius:8px}
+.tl-photo,.pop-thumb{cursor:zoom-in}
 </style>
 </head>
 <body>
@@ -244,6 +250,10 @@ textarea{resize:vertical;min-height:64px}
     <p class="sub" data-i18n="badgesSub"></p>
     <h3 style="font-size:.9rem;color:var(--green-dark);margin:14px 0 8px" data-i18n="milestoneBadges"></h3>
     <div class="badge-grid" id="milestoneBadges"></div>
+    <h3 style="font-size:.9rem;color:var(--green-dark);margin:18px 0 8px" data-i18n="orderBadges"></h3>
+    <div class="badge-grid" id="orderBadges"></div>
+    <h3 style="font-size:.9rem;color:var(--green-dark);margin:18px 0 8px" data-i18n="familyBadges"></h3>
+    <div class="badge-grid" id="familyBadges"></div>
     <h3 style="font-size:.9rem;color:var(--green-dark);margin:18px 0 8px" data-i18n="speciesBadges"></h3>
     <div class="badge-grid" id="speciesBadges"></div>
   </section>
@@ -288,6 +298,7 @@ textarea{resize:vertical;min-height:64px}
   </div>
 </div>
 
+<div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" alt=""></div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -311,38 +322,231 @@ const store = (() => {
 
 /* ============ bird database ============ */
 const BIRDS = [
- {id:'passer_domesticus', latin:'Passer domesticus', name:{en:'House Sparrow',da:'Gråspurv'},
-  size:'14–16 cm', status:'LC', c1:'#8a6f4d', c2:'#5a4632',
-  habitat:{en:'Towns, farms and gardens; nests near buildings.',da:'Byer, gårde og haver; yngler nær bygninger.'}},
- {id:'passer_montanus', latin:'Passer montanus', name:{en:'Eurasian Tree Sparrow',da:'Skovspurv'},
-  size:'12.5–14 cm', status:'LC', c1:'#a3794a', c2:'#6e4f2e',
-  habitat:{en:'Farmland edges, hedgerows and rural gardens.',da:'Landbrugsland, levende hegn og landlige haver.'}},
- {id:'parus_major', latin:'Parus major', name:{en:'Great Tit',da:'Musvit'},
-  size:'13.5–15 cm', status:'LC', c1:'#e3c832', c2:'#2b3d2f',
-  habitat:{en:'Woodland, parks and gardens; frequent at feeders.',da:'Skov, parker og haver; hyppig ved foderbrættet.'}},
- {id:'cyanistes_caeruleus', latin:'Cyanistes caeruleus', name:{en:'Eurasian Blue Tit',da:'Blåmejse'},
-  size:'10.5–12 cm', status:'LC', c1:'#4a90c4', c2:'#e8d34e',
-  habitat:{en:'Deciduous woodland, hedges and gardens.',da:'Løvskov, hække og haver.'}},
- {id:'turdus_merula', latin:'Turdus merula', name:{en:'Common Blackbird',da:'Solsort'},
-  size:'23.5–29 cm', status:'LC', c1:'#2b2b2b', c2:'#e8a13c',
-  habitat:{en:'Gardens, parks and woodland; forages on lawns.',da:'Haver, parker og skov; fouragerer på græsplæner.'}},
- {id:'fringilla_coelebs', latin:'Fringilla coelebs', name:{en:'Common Chaffinch',da:'Bogfinke'},
-  size:'14–16 cm', status:'LC', c1:'#c4785a', c2:'#5d7085',
-  habitat:{en:'Woodland, parks and gardens; one of Denmark’s most numerous birds.',da:'Skov, parker og haver; en af Danmarks talrigeste fugle.'}},
- {id:'chloris_chloris', latin:'Chloris chloris', name:{en:'European Greenfinch',da:'Grønirisk'},
-  size:'14–16 cm', status:'LC', c1:'#8faf3e', c2:'#c9c93c',
-  habitat:{en:'Gardens, hedges and open woodland; declining locally in Denmark.',da:'Haver, hække og åben skov; i lokal tilbagegang i Danmark.'}},
- {id:'erithacus_rubecula', latin:'Erithacus rubecula', name:{en:'European Robin',da:'Rødhals'},
-  size:'12.5–14 cm', status:'LC', c1:'#d3552e', c2:'#7d7463',
-  habitat:{en:'Woodland undergrowth, hedges and shady gardens.',da:'Skovbund, hække og skyggefulde haver.'}},
- {id:'pica_pica', latin:'Pica pica', name:{en:'Eurasian Magpie',da:'Husskade'},
-  size:'40–51 cm', status:'LC', c1:'#1f1f28', c2:'#eef0f2',
-  habitat:{en:'Open country with trees, towns and gardens.',da:'Åbent land med træer, byer og haver.'}},
- {id:'columba_palumbus', latin:'Columba palumbus', name:{en:'Common Wood Pigeon',da:'Ringdue'},
-  size:'38–44.5 cm', status:'LC', c1:'#9aa3b0', c2:'#c5c9d1',
-  habitat:{en:'Woodland, farmland, parks and gardens.',da:'Skov, landbrugsland, parker og haver.'}}
+ {id:'gavia_stellata',latin:'Gavia stellata',name:{en:'Red-throated Diver',da:'Rødstrubet Lom'},size:'55–67 cm',status:'LC',c1:'#4a5a66',c2:'#8fa3b0',habitat:{en:'Coastal seas in winter; breeds on northern lakes.',da:'Kystnære farvande om vinteren; yngler ved nordlige søer.'}},
+ {id:'gavia_arctica',latin:'Gavia arctica',name:{en:'Black-throated Diver',da:'Sortstrubet Lom'},size:'63–75 cm',status:'LC',c1:'#4a5a66',c2:'#8fa3b0',habitat:{en:'Coastal seas in winter; breeds on northern lakes.',da:'Kystnære farvande om vinteren; yngler ved nordlige søer.'}},
+ {id:'tachybaptus_ruficollis',latin:'Tachybaptus ruficollis',name:{en:'Little Grebe',da:'Lille Lappedykker'},size:'25–29 cm',status:'LC',c1:'#7a5c3a',c2:'#c9b28f',habitat:{en:'Reed-fringed lakes and sheltered coastal waters.',da:'Søer med rørskov og beskyttede kystvande.'}},
+ {id:'podiceps_cristatus',latin:'Podiceps cristatus',name:{en:'Great Crested Grebe',da:'Toppet Lappedykker'},size:'46–51 cm',status:'LC',c1:'#7a5c3a',c2:'#c9b28f',habitat:{en:'Reed-fringed lakes and sheltered coastal waters.',da:'Søer med rørskov og beskyttede kystvande.'}},
+ {id:'podiceps_grisegena',latin:'Podiceps grisegena',name:{en:'Red-necked Grebe',da:'Gråstrubet Lappedykker'},size:'40–50 cm',status:'LC',c1:'#7a5c3a',c2:'#c9b28f',habitat:{en:'Reed-fringed lakes and sheltered coastal waters.',da:'Søer med rørskov og beskyttede kystvande.'}},
+ {id:'podiceps_auritus',latin:'Podiceps auritus',name:{en:'Slavonian Grebe',da:'Nordisk Lappedykker'},size:'31–38 cm',status:'VU',c1:'#7a5c3a',c2:'#c9b28f',habitat:{en:'Reed-fringed lakes and sheltered coastal waters.',da:'Søer med rørskov og beskyttede kystvande.'}},
+ {id:'podiceps_nigricollis',latin:'Podiceps nigricollis',name:{en:'Black-necked Grebe',da:'Sorthalset Lappedykker'},size:'28–34 cm',status:'LC',c1:'#7a5c3a',c2:'#c9b28f',habitat:{en:'Reed-fringed lakes and sheltered coastal waters.',da:'Søer med rørskov og beskyttede kystvande.'}},
+ {id:'phalacrocorax_carbo',latin:'Phalacrocorax carbo',name:{en:'Great Cormorant',da:'Skarv'},size:'77–94 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Coasts, lakes and fjords; nests colonially in trees.',da:'Kyster, søer og fjorde; yngler kolonivis i træer.'}},
+ {id:'morus_bassanus',latin:'Morus bassanus',name:{en:'Northern Gannet',da:'Sule'},size:'87–100 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Coasts, lakes and fjords; nests colonially in trees.',da:'Kyster, søer og fjorde; yngler kolonivis i træer.'}},
+ {id:'botaurus_stellaris',latin:'Botaurus stellaris',name:{en:'Eurasian Bittern',da:'Rørdrum'},size:'69–81 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'ardea_cinerea',latin:'Ardea cinerea',name:{en:'Grey Heron',da:'Fiskehejre'},size:'84–102 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'ardea_alba',latin:'Ardea alba',name:{en:'Great Egret',da:'Sølvhejre'},size:'80–104 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'egretta_garzetta',latin:'Egretta garzetta',name:{en:'Little Egret',da:'Silkehejre'},size:'55–65 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'platalea_leucorodia',latin:'Platalea leucorodia',name:{en:'Eurasian Spoonbill',da:'Skestork'},size:'80–93 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'ciconia_ciconia',latin:'Ciconia ciconia',name:{en:'White Stork',da:'Hvid Stork'},size:'100–115 cm',status:'LC',c1:'#6f7d86',c2:'#9fb0b8',habitat:{en:'Wetlands, lake margins, meadows and shallow coasts.',da:'Vådområder, søbredder, enge og lavvandede kyster.'}},
+ {id:'cygnus_olor',latin:'Cygnus olor',name:{en:'Mute Swan',da:'Knopsvane'},size:'140–160 cm',status:'LC',c1:'#dcdcdc',c2:'#e8a13c',habitat:{en:'Lakes, sheltered coasts and flooded fields.',da:'Søer, beskyttede kyster og oversvømmede marker.'}},
+ {id:'cygnus_cygnus',latin:'Cygnus cygnus',name:{en:'Whooper Swan',da:'Sangsvane'},size:'140–165 cm',status:'LC',c1:'#dcdcdc',c2:'#e8a13c',habitat:{en:'Lakes, sheltered coasts and flooded fields.',da:'Søer, beskyttede kyster og oversvømmede marker.'}},
+ {id:'cygnus_columbianus',latin:'Cygnus columbianus',name:{en:'Tundra Swan',da:'Pibesvane'},size:'115–140 cm',status:'LC',c1:'#dcdcdc',c2:'#e8a13c',habitat:{en:'Lakes, sheltered coasts and flooded fields.',da:'Søer, beskyttede kyster og oversvømmede marker.'}},
+ {id:'anser_anser',latin:'Anser anser',name:{en:'Greylag Goose',da:'Grågås'},size:'74–91 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'anser_fabalis',latin:'Anser fabalis',name:{en:'Bean Goose',da:'Sædgås'},size:'69–88 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'anser_brachyrhynchus',latin:'Anser brachyrhynchus',name:{en:'Pink-footed Goose',da:'Kortnæbbet Gås'},size:'60–75 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'anser_albifrons',latin:'Anser albifrons',name:{en:'Greater White-fronted Goose',da:'Blisgås'},size:'64–78 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'branta_canadensis',latin:'Branta canadensis',name:{en:'Canada Goose',da:'Canadagås'},size:'90–110 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'branta_leucopsis',latin:'Branta leucopsis',name:{en:'Barnacle Goose',da:'Bramgås'},size:'58–70 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'branta_bernicla',latin:'Branta bernicla',name:{en:'Brent Goose',da:'Knortegås'},size:'55–62 cm',status:'LC',c1:'#6b5b45',c2:'#9a8a70',habitat:{en:'Farmland, marshes, meadows and coastal lagoons.',da:'Landbrugsland, moser, enge og kystlaguner.'}},
+ {id:'tadorna_tadorna',latin:'Tadorna tadorna',name:{en:'Common Shelduck',da:'Gravand'},size:'58–67 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'mareca_penelope',latin:'Mareca penelope',name:{en:'Eurasian Wigeon',da:'Pibeand'},size:'42–52 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'mareca_strepera',latin:'Mareca strepera',name:{en:'Gadwall',da:'Knarand'},size:'46–56 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'anas_crecca',latin:'Anas crecca',name:{en:'Eurasian Teal',da:'Krikand'},size:'34–43 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'anas_platyrhynchos',latin:'Anas platyrhynchos',name:{en:'Mallard',da:'Gråand'},size:'50–65 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'anas_acuta',latin:'Anas acuta',name:{en:'Northern Pintail',da:'Spidsand'},size:'51–66 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'spatula_querquedula',latin:'Spatula querquedula',name:{en:'Garganey',da:'Atlingand'},size:'37–41 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'spatula_clypeata',latin:'Spatula clypeata',name:{en:'Northern Shoveler',da:'Skeand'},size:'44–52 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'aythya_ferina',latin:'Aythya ferina',name:{en:'Common Pochard',da:'Taffeland'},size:'42–49 cm',status:'VU',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'aythya_fuligula',latin:'Aythya fuligula',name:{en:'Tufted Duck',da:'Troldand'},size:'40–47 cm',status:'LC',c1:'#5a6e4a',c2:'#8a9a6a',habitat:{en:'Shallow lakes, marshes and sheltered coasts.',da:'Lavvandede søer, moser og beskyttede kyster.'}},
+ {id:'aythya_marila',latin:'Aythya marila',name:{en:'Greater Scaup',da:'Bjergand'},size:'42–51 cm',status:'LC',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'somateria_mollissima',latin:'Somateria mollissima',name:{en:'Common Eider',da:'Ederfugl'},size:'50–71 cm',status:'NT',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'clangula_hyemalis',latin:'Clangula hyemalis',name:{en:'Long-tailed Duck',da:'Havlit'},size:'40–47 cm',status:'VU',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'melanitta_nigra',latin:'Melanitta nigra',name:{en:'Common Scoter',da:'Sortand'},size:'44–54 cm',status:'LC',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'melanitta_fusca',latin:'Melanitta fusca',name:{en:'Velvet Scoter',da:'Fløjlsand'},size:'51–58 cm',status:'VU',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'bucephala_clangula',latin:'Bucephala clangula',name:{en:'Common Goldeneye',da:'Hvinand'},size:'40–48 cm',status:'LC',c1:'#33414d',c2:'#7a8a96',habitat:{en:'Coastal and offshore waters; some breed on tundra.',da:'Kyst- og havområder; nogle yngler på tundra.'}},
+ {id:'mergellus_albellus',latin:'Mergellus albellus',name:{en:'Smew',da:'Lille Skallesluger'},size:'38–44 cm',status:'LC',c1:'#3a4a52',c2:'#b5522f',habitat:{en:'Clear lakes, rivers and coastal waters.',da:'Klare søer, åer og kystvande.'}},
+ {id:'mergus_serrator',latin:'Mergus serrator',name:{en:'Red-breasted Merganser',da:'Toppet Skallesluger'},size:'52–58 cm',status:'LC',c1:'#3a4a52',c2:'#b5522f',habitat:{en:'Clear lakes, rivers and coastal waters.',da:'Klare søer, åer og kystvande.'}},
+ {id:'mergus_merganser',latin:'Mergus merganser',name:{en:'Goosander',da:'Stor Skallesluger'},size:'58–68 cm',status:'LC',c1:'#3a4a52',c2:'#b5522f',habitat:{en:'Clear lakes, rivers and coastal waters.',da:'Klare søer, åer og kystvande.'}},
+ {id:'pernis_apivorus',latin:'Pernis apivorus',name:{en:'European Honey Buzzard',da:'Hvepsevåge'},size:'52–60 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'milvus_milvus',latin:'Milvus milvus',name:{en:'Red Kite',da:'Rød Glente'},size:'60–70 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'milvus_migrans',latin:'Milvus migrans',name:{en:'Black Kite',da:'Sort Glente'},size:'47–60 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'haliaeetus_albicilla',latin:'Haliaeetus albicilla',name:{en:'White-tailed Eagle',da:'Havørn'},size:'76–92 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'circus_aeruginosus',latin:'Circus aeruginosus',name:{en:'Western Marsh Harrier',da:'Rørhøg'},size:'43–55 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'circus_cyaneus',latin:'Circus cyaneus',name:{en:'Hen Harrier',da:'Blå Kærhøg'},size:'45–55 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'accipiter_gentilis',latin:'Accipiter gentilis',name:{en:'Northern Goshawk',da:'Duehøg'},size:'48–62 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'accipiter_nisus',latin:'Accipiter nisus',name:{en:'Eurasian Sparrowhawk',da:'Spurvehøg'},size:'28–40 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'buteo_buteo',latin:'Buteo buteo',name:{en:'Common Buzzard',da:'Musvåge'},size:'40–58 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'buteo_lagopus',latin:'Buteo lagopus',name:{en:'Rough-legged Buzzard',da:'Fjeldvåge'},size:'50–61 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'pandion_haliaetus',latin:'Pandion haliaetus',name:{en:'Osprey',da:'Fiskeørn'},size:'52–60 cm',status:'LC',c1:'#6b5a3f',c2:'#3a2f22',habitat:{en:'Woodland, farmland and open country while hunting.',da:'Skov, landbrugsland og åbent land under jagt.'}},
+ {id:'falco_tinnunculus',latin:'Falco tinnunculus',name:{en:'Common Kestrel',da:'Tårnfalk'},size:'32–39 cm',status:'LC',c1:'#7a6a4a',c2:'#4a3f2a',habitat:{en:'Open country, coasts and towns.',da:'Åbent land, kyster og byer.'}},
+ {id:'falco_columbarius',latin:'Falco columbarius',name:{en:'Merlin',da:'Dværgfalk'},size:'26–33 cm',status:'LC',c1:'#7a6a4a',c2:'#4a3f2a',habitat:{en:'Open country, coasts and towns.',da:'Åbent land, kyster og byer.'}},
+ {id:'falco_subbuteo',latin:'Falco subbuteo',name:{en:'Eurasian Hobby',da:'Lærkefalk'},size:'29–36 cm',status:'LC',c1:'#7a6a4a',c2:'#4a3f2a',habitat:{en:'Open country, coasts and towns.',da:'Åbent land, kyster og byer.'}},
+ {id:'falco_peregrinus',latin:'Falco peregrinus',name:{en:'Peregrine Falcon',da:'Vandrefalk'},size:'34–58 cm',status:'LC',c1:'#7a6a4a',c2:'#4a3f2a',habitat:{en:'Open country, coasts and towns.',da:'Åbent land, kyster og byer.'}},
+ {id:'perdix_perdix',latin:'Perdix perdix',name:{en:'Grey Partridge',da:'Agerhøne'},size:'28–32 cm',status:'LC',c1:'#8a6a3f',c2:'#5a4326',habitat:{en:'Farmland, grassland and woodland edges.',da:'Landbrugsland, græsland og skovbryn.'}},
+ {id:'coturnix_coturnix',latin:'Coturnix coturnix',name:{en:'Common Quail',da:'Vagtel'},size:'16–18 cm',status:'LC',c1:'#8a6a3f',c2:'#5a4326',habitat:{en:'Farmland, grassland and woodland edges.',da:'Landbrugsland, græsland og skovbryn.'}},
+ {id:'phasianus_colchicus',latin:'Phasianus colchicus',name:{en:'Common Pheasant',da:'Fasan'},size:'53–89 cm',status:'LC',c1:'#8a6a3f',c2:'#5a4326',habitat:{en:'Farmland, grassland and woodland edges.',da:'Landbrugsland, græsland og skovbryn.'}},
+ {id:'rallus_aquaticus',latin:'Rallus aquaticus',name:{en:'Water Rail',da:'Vandrikse'},size:'23–28 cm',status:'LC',c1:'#4a4436',c2:'#7a6f55',habitat:{en:'Dense reedbeds, marshes and lake margins.',da:'Tætte rørskove, moser og søbredder.'}},
+ {id:'crex_crex',latin:'Crex crex',name:{en:'Corncrake',da:'Engsnarre'},size:'27–30 cm',status:'LC',c1:'#4a4436',c2:'#7a6f55',habitat:{en:'Dense reedbeds, marshes and lake margins.',da:'Tætte rørskove, moser og søbredder.'}},
+ {id:'gallinula_chloropus',latin:'Gallinula chloropus',name:{en:'Common Moorhen',da:'Grønbenet Rørhøne'},size:'30–38 cm',status:'LC',c1:'#4a4436',c2:'#7a6f55',habitat:{en:'Dense reedbeds, marshes and lake margins.',da:'Tætte rørskove, moser og søbredder.'}},
+ {id:'fulica_atra',latin:'Fulica atra',name:{en:'Eurasian Coot',da:'Blishøne'},size:'36–42 cm',status:'LC',c1:'#4a4436',c2:'#7a6f55',habitat:{en:'Dense reedbeds, marshes and lake margins.',da:'Tætte rørskove, moser og søbredder.'}},
+ {id:'grus_grus',latin:'Grus grus',name:{en:'Common Crane',da:'Trane'},size:'96–119 cm',status:'LC',c1:'#7a8288',c2:'#a8b0b5',habitat:{en:'Bogs, wet meadows and farmland.',da:'Moser, våde enge og landbrugsland.'}},
+ {id:'haematopus_ostralegus',latin:'Haematopus ostralegus',name:{en:'Eurasian Oystercatcher',da:'Strandskade'},size:'40–45 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'recurvirostra_avosetta',latin:'Recurvirostra avosetta',name:{en:'Pied Avocet',da:'Klyde'},size:'42–46 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'charadrius_dubius',latin:'Charadrius dubius',name:{en:'Little Ringed Plover',da:'Lille Præstekrave'},size:'14–17 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'charadrius_hiaticula',latin:'Charadrius hiaticula',name:{en:'Common Ringed Plover',da:'Stor Præstekrave'},size:'17–20 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'pluvialis_apricaria',latin:'Pluvialis apricaria',name:{en:'European Golden Plover',da:'Hjejle'},size:'25–29 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'pluvialis_squatarola',latin:'Pluvialis squatarola',name:{en:'Grey Plover',da:'Strandhjejle'},size:'27–30 cm',status:'VU',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'vanellus_vanellus',latin:'Vanellus vanellus',name:{en:'Northern Lapwing',da:'Vibe'},size:'28–33 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_canutus',latin:'Calidris canutus',name:{en:'Red Knot',da:'Islandsk Ryle'},size:'23–26 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_alba',latin:'Calidris alba',name:{en:'Sanderling',da:'Sandløber'},size:'20–21 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_minuta',latin:'Calidris minuta',name:{en:'Little Stint',da:'Dværgryle'},size:'12–14 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_ferruginea',latin:'Calidris ferruginea',name:{en:'Curlew Sandpiper',da:'Krumnæbbet Ryle'},size:'18–23 cm',status:'VU',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_maritima',latin:'Calidris maritima',name:{en:'Purple Sandpiper',da:'Sortgrå Ryle'},size:'20–22 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_alpina',latin:'Calidris alpina',name:{en:'Dunlin',da:'Almindelig Ryle'},size:'16–22 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'calidris_pugnax',latin:'Calidris pugnax',name:{en:'Ruff',da:'Brushane'},size:'20–32 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'lymnocryptes_minimus',latin:'Lymnocryptes minimus',name:{en:'Jack Snipe',da:'Enkeltbekkasin'},size:'17–19 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'gallinago_gallinago',latin:'Gallinago gallinago',name:{en:'Common Snipe',da:'Dobbeltbekkasin'},size:'25–27 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'scolopax_rusticola',latin:'Scolopax rusticola',name:{en:'Eurasian Woodcock',da:'Skovsneppe'},size:'33–38 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'limosa_limosa',latin:'Limosa limosa',name:{en:'Black-tailed Godwit',da:'Stor Kobbersneppe'},size:'40–44 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'limosa_lapponica',latin:'Limosa lapponica',name:{en:'Bar-tailed Godwit',da:'Lille Kobbersneppe'},size:'37–41 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'numenius_phaeopus',latin:'Numenius phaeopus',name:{en:'Whimbrel',da:'Lille Regnspove'},size:'37–45 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'numenius_arquata',latin:'Numenius arquata',name:{en:'Eurasian Curlew',da:'Stor Regnspove'},size:'48–57 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'tringa_erythropus',latin:'Tringa erythropus',name:{en:'Spotted Redshank',da:'Sortklire'},size:'29–33 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'tringa_totanus',latin:'Tringa totanus',name:{en:'Common Redshank',da:'Rødben'},size:'27–29 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'tringa_nebularia',latin:'Tringa nebularia',name:{en:'Common Greenshank',da:'Hvidklire'},size:'30–35 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'tringa_ochropus',latin:'Tringa ochropus',name:{en:'Green Sandpiper',da:'Svaleklire'},size:'21–24 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'tringa_glareola',latin:'Tringa glareola',name:{en:'Wood Sandpiper',da:'Tinksmed'},size:'19–21 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'actitis_hypoleucos',latin:'Actitis hypoleucos',name:{en:'Common Sandpiper',da:'Mudderklire'},size:'18–20 cm',status:'LC',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'arenaria_interpres',latin:'Arenaria interpres',name:{en:'Ruddy Turnstone',da:'Stenvender'},size:'22–24 cm',status:'NT',c1:'#8a7a5a',c2:'#5a4f3a',habitat:{en:'Shorelines, mudflats, marshes and wet meadows.',da:'Kyster, mudderflader, moser og våde enge.'}},
+ {id:'stercorarius_parasiticus',latin:'Stercorarius parasiticus',name:{en:'Arctic Skua',da:'Almindelig Kjove'},size:'41–46 cm',status:'LC',c1:'#4a4038',c2:'#6e5f52',habitat:{en:'Coastal and offshore waters; pirates other seabirds.',da:'Kyst- og havområder; kleptoparasit på andre havfugle.'}},
+ {id:'chroicocephalus_ridibundus',latin:'Chroicocephalus ridibundus',name:{en:'Black-headed Gull',da:'Hættemåge'},size:'38–44 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'hydrocoloeus_minutus',latin:'Hydrocoloeus minutus',name:{en:'Little Gull',da:'Dværgmåge'},size:'25–30 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'larus_canus',latin:'Larus canus',name:{en:'Common Gull',da:'Stormmåge'},size:'40–46 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'larus_marinus',latin:'Larus marinus',name:{en:'Great Black-backed Gull',da:'Svartbag'},size:'64–78 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'larus_argentatus',latin:'Larus argentatus',name:{en:'European Herring Gull',da:'Sølvmåge'},size:'54–60 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'larus_fuscus',latin:'Larus fuscus',name:{en:'Lesser Black-backed Gull',da:'Sildemåge'},size:'48–56 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'larus_michahellis',latin:'Larus michahellis',name:{en:'Yellow-legged Gull',da:'Middelhavssølvmåge'},size:'52–58 cm',status:'LC',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'rissa_tridactyla',latin:'Rissa tridactyla',name:{en:'Black-legged Kittiwake',da:'Ride'},size:'37–42 cm',status:'VU',c1:'#9aa3ad',c2:'#d0d5da',habitat:{en:'Coasts, harbours, lakes, farmland and towns.',da:'Kyster, havne, søer, landbrugsland og byer.'}},
+ {id:'sternula_albifrons',latin:'Sternula albifrons',name:{en:'Little Tern',da:'Dværgterne'},size:'21–25 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'chlidonias_niger',latin:'Chlidonias niger',name:{en:'Black Tern',da:'Sortterne'},size:'22–26 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'hydroprogne_caspia',latin:'Hydroprogne caspia',name:{en:'Caspian Tern',da:'Rovterne'},size:'48–56 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'thalasseus_sandvicensis',latin:'Thalasseus sandvicensis',name:{en:'Sandwich Tern',da:'Splitterne'},size:'37–43 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'sterna_hirundo',latin:'Sterna hirundo',name:{en:'Common Tern',da:'Fjordterne'},size:'31–37 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'sterna_paradisaea',latin:'Sterna paradisaea',name:{en:'Arctic Tern',da:'Havterne'},size:'33–39 cm',status:'LC',c1:'#cfd6db',c2:'#2b3d4f',habitat:{en:'Coasts, lagoons and lakes; plunge-dives for fish.',da:'Kyster, laguner og søer; styrtdykker efter fisk.'}},
+ {id:'uria_aalge',latin:'Uria aalge',name:{en:'Common Guillemot',da:'Lomvie'},size:'38–46 cm',status:'LC',c1:'#2b2f33',c2:'#e8edf0',habitat:{en:'Open sea; breeds on rocky coasts and cliffs.',da:'Åbent hav; yngler på klippekyster.'}},
+ {id:'alca_torda',latin:'Alca torda',name:{en:'Razorbill',da:'Alk'},size:'37–39 cm',status:'LC',c1:'#2b2f33',c2:'#e8edf0',habitat:{en:'Open sea; breeds on rocky coasts and cliffs.',da:'Åbent hav; yngler på klippekyster.'}},
+ {id:'cepphus_grylle',latin:'Cepphus grylle',name:{en:'Black Guillemot',da:'Tejst'},size:'30–32 cm',status:'LC',c1:'#2b2f33',c2:'#e8edf0',habitat:{en:'Open sea; breeds on rocky coasts and cliffs.',da:'Åbent hav; yngler på klippekyster.'}},
+ {id:'fratercula_arctica',latin:'Fratercula arctica',name:{en:'Atlantic Puffin',da:'Lunde'},size:'28–34 cm',status:'VU',c1:'#2b2f33',c2:'#e8edf0',habitat:{en:'Open sea; breeds on rocky coasts and cliffs.',da:'Åbent hav; yngler på klippekyster.'}},
+ {id:'columba_livia',latin:'Columba livia',name:{en:'Rock Dove',da:'Klippedue'},size:'29–37 cm',status:'LC',c1:'#8a8f97',c2:'#b0b5bc',habitat:{en:'Woodland, farmland, parks and towns.',da:'Skov, landbrugsland, parker og byer.'}},
+ {id:'columba_oenas',latin:'Columba oenas',name:{en:'Stock Dove',da:'Huldue'},size:'28–32 cm',status:'LC',c1:'#8a8f97',c2:'#b0b5bc',habitat:{en:'Woodland, farmland, parks and towns.',da:'Skov, landbrugsland, parker og byer.'}},
+ {id:'columba_palumbus',latin:'Columba palumbus',name:{en:'Common Wood Pigeon',da:'Ringdue'},size:'38–45 cm',status:'LC',c1:'#8a8f97',c2:'#b0b5bc',habitat:{en:'Woodland, farmland, parks and towns.',da:'Skov, landbrugsland, parker og byer.'}},
+ {id:'streptopelia_decaocto',latin:'Streptopelia decaocto',name:{en:'Eurasian Collared Dove',da:'Tyrkerdue'},size:'29–33 cm',status:'LC',c1:'#8a8f97',c2:'#b0b5bc',habitat:{en:'Woodland, farmland, parks and towns.',da:'Skov, landbrugsland, parker og byer.'}},
+ {id:'streptopelia_turtur',latin:'Streptopelia turtur',name:{en:'European Turtle Dove',da:'Turteldue'},size:'25–28 cm',status:'VU',c1:'#8a8f97',c2:'#b0b5bc',habitat:{en:'Woodland, farmland, parks and towns.',da:'Skov, landbrugsland, parker og byer.'}},
+ {id:'cuculus_canorus',latin:'Cuculus canorus',name:{en:'Common Cuckoo',da:'Gøg'},size:'32–36 cm',status:'LC',c1:'#7a828a',c2:'#a5adb5',habitat:{en:'Reedbeds, heaths, woodland and farmland edges.',da:'Rørskove, heder, skov og skovbryn.'}},
+ {id:'tyto_alba',latin:'Tyto alba',name:{en:'Western Barn Owl',da:'Slørugle'},size:'33–39 cm',status:'LC',c1:'#7a6a4f',c2:'#4a3f2c',habitat:{en:'Woodland, farmland, marshes and old buildings.',da:'Skov, landbrugsland, moser og gamle bygninger.'}},
+ {id:'athene_noctua',latin:'Athene noctua',name:{en:'Little Owl',da:'Kirkeugle'},size:'21–23 cm',status:'LC',c1:'#7a6a4f',c2:'#4a3f2c',habitat:{en:'Woodland, farmland, marshes and old buildings.',da:'Skov, landbrugsland, moser og gamle bygninger.'}},
+ {id:'strix_aluco',latin:'Strix aluco',name:{en:'Tawny Owl',da:'Natugle'},size:'37–46 cm',status:'LC',c1:'#7a6a4f',c2:'#4a3f2c',habitat:{en:'Woodland, farmland, marshes and old buildings.',da:'Skov, landbrugsland, moser og gamle bygninger.'}},
+ {id:'asio_otus',latin:'Asio otus',name:{en:'Long-eared Owl',da:'Skovhornugle'},size:'35–40 cm',status:'LC',c1:'#7a6a4f',c2:'#4a3f2c',habitat:{en:'Woodland, farmland, marshes and old buildings.',da:'Skov, landbrugsland, moser og gamle bygninger.'}},
+ {id:'asio_flammeus',latin:'Asio flammeus',name:{en:'Short-eared Owl',da:'Mosehornugle'},size:'33–40 cm',status:'LC',c1:'#7a6a4f',c2:'#4a3f2c',habitat:{en:'Woodland, farmland, marshes and old buildings.',da:'Skov, landbrugsland, moser og gamle bygninger.'}},
+ {id:'caprimulgus_europaeus',latin:'Caprimulgus europaeus',name:{en:'European Nightjar',da:'Natravn'},size:'24–28 cm',status:'LC',c1:'#7a6f55',c2:'#4a4436',habitat:{en:'Heathland and open woodland; active at dusk.',da:'Heder og åben skov; aktiv i skumringen.'}},
+ {id:'apus_apus',latin:'Apus apus',name:{en:'Common Swift',da:'Mursejler'},size:'16–18 cm',status:'LC',c1:'#3a3a3a',c2:'#5a5a5a',habitat:{en:'Aerial over towns and countryside; nests in buildings.',da:'I luften over byer og land; yngler i bygninger.'}},
+ {id:'alcedo_atthis',latin:'Alcedo atthis',name:{en:'Common Kingfisher',da:'Isfugl'},size:'16–18 cm',status:'LC',c1:'#1e7a8c',c2:'#d3823c',habitat:{en:'Slow rivers, streams and lake margins.',da:'Langsomme åer, vandløb og søbredder.'}},
+ {id:'jynx_torquilla',latin:'Jynx torquilla',name:{en:'Eurasian Wryneck',da:'Vendehals'},size:'16–18 cm',status:'LC',c1:'#2b2b2b',c2:'#c23a3a',habitat:{en:'Woodland, parks and mature gardens.',da:'Skov, parker og gamle haver.'}},
+ {id:'picus_viridis',latin:'Picus viridis',name:{en:'European Green Woodpecker',da:'Grønspætte'},size:'30–36 cm',status:'LC',c1:'#2b2b2b',c2:'#c23a3a',habitat:{en:'Woodland, parks and mature gardens.',da:'Skov, parker og gamle haver.'}},
+ {id:'dryocopus_martius',latin:'Dryocopus martius',name:{en:'Black Woodpecker',da:'Sortspætte'},size:'40–46 cm',status:'LC',c1:'#2b2b2b',c2:'#c23a3a',habitat:{en:'Woodland, parks and mature gardens.',da:'Skov, parker og gamle haver.'}},
+ {id:'dendrocopos_major',latin:'Dendrocopos major',name:{en:'Great Spotted Woodpecker',da:'Stor Flagspætte'},size:'20–24 cm',status:'LC',c1:'#2b2b2b',c2:'#c23a3a',habitat:{en:'Woodland, parks and mature gardens.',da:'Skov, parker og gamle haver.'}},
+ {id:'dryobates_minor',latin:'Dryobates minor',name:{en:'Lesser Spotted Woodpecker',da:'Lille Flagspætte'},size:'14–16 cm',status:'LC',c1:'#2b2b2b',c2:'#c23a3a',habitat:{en:'Woodland, parks and mature gardens.',da:'Skov, parker og gamle haver.'}},
+ {id:'lullula_arborea',latin:'Lullula arborea',name:{en:'Woodlark',da:'Hedelærke'},size:'13–15 cm',status:'LC',c1:'#8a7a55',c2:'#5a4f38',habitat:{en:'Open farmland, heath and coastal meadows.',da:'Åbent landbrugsland, heder og strandenge.'}},
+ {id:'alauda_arvensis',latin:'Alauda arvensis',name:{en:'Eurasian Skylark',da:'Sanglærke'},size:'16–18 cm',status:'LC',c1:'#8a7a55',c2:'#5a4f38',habitat:{en:'Open farmland, heath and coastal meadows.',da:'Åbent landbrugsland, heder og strandenge.'}},
+ {id:'galerida_cristata',latin:'Galerida cristata',name:{en:'Crested Lark',da:'Toplærke'},size:'17–19 cm',status:'LC',c1:'#8a7a55',c2:'#5a4f38',habitat:{en:'Open farmland, heath and coastal meadows.',da:'Åbent landbrugsland, heder og strandenge.'}},
+ {id:'riparia_riparia',latin:'Riparia riparia',name:{en:'Sand Martin',da:'Digesvale'},size:'12–13 cm',status:'LC',c1:'#2b3d55',c2:'#d3a05a',habitat:{en:'Open country near water; nests on buildings.',da:'Åbent land nær vand; yngler på bygninger.'}},
+ {id:'hirundo_rustica',latin:'Hirundo rustica',name:{en:'Barn Swallow',da:'Landsvale'},size:'17–19 cm',status:'LC',c1:'#2b3d55',c2:'#d3a05a',habitat:{en:'Open country near water; nests on buildings.',da:'Åbent land nær vand; yngler på bygninger.'}},
+ {id:'delichon_urbicum',latin:'Delichon urbicum',name:{en:'Western House Martin',da:'Bysvale'},size:'13–15 cm',status:'LC',c1:'#2b3d55',c2:'#d3a05a',habitat:{en:'Open country near water; nests on buildings.',da:'Åbent land nær vand; yngler på bygninger.'}},
+ {id:'anthus_trivialis',latin:'Anthus trivialis',name:{en:'Tree Pipit',da:'Skovpiber'},size:'14–16 cm',status:'LC',c1:'#8a7d5a',c2:'#5f553c',habitat:{en:'Meadows, heaths, coasts and open farmland.',da:'Enge, heder, kyster og åbent landbrugsland.'}},
+ {id:'anthus_pratensis',latin:'Anthus pratensis',name:{en:'Meadow Pipit',da:'Engpiber'},size:'14–16 cm',status:'LC',c1:'#8a7d5a',c2:'#5f553c',habitat:{en:'Meadows, heaths, coasts and open farmland.',da:'Enge, heder, kyster og åbent landbrugsland.'}},
+ {id:'anthus_petrosus',latin:'Anthus petrosus',name:{en:'Rock Pipit',da:'Skærpiber'},size:'16–17 cm',status:'LC',c1:'#8a7d5a',c2:'#5f553c',habitat:{en:'Meadows, heaths, coasts and open farmland.',da:'Enge, heder, kyster og åbent landbrugsland.'}},
+ {id:'motacilla_flava',latin:'Motacilla flava',name:{en:'Western Yellow Wagtail',da:'Gul Vipstjert'},size:'15–16 cm',status:'LC',c1:'#6a6f55',c2:'#d8cf3c',habitat:{en:'Watersides, farmland, meadows and towns.',da:'Vandkanter, landbrugsland, enge og byer.'}},
+ {id:'motacilla_cinerea',latin:'Motacilla cinerea',name:{en:'Grey Wagtail',da:'Bjergvipstjert'},size:'18–20 cm',status:'LC',c1:'#6a6f55',c2:'#d8cf3c',habitat:{en:'Watersides, farmland, meadows and towns.',da:'Vandkanter, landbrugsland, enge og byer.'}},
+ {id:'motacilla_alba',latin:'Motacilla alba',name:{en:'White Wagtail',da:'Hvid Vipstjert'},size:'16–19 cm',status:'LC',c1:'#6a6f55',c2:'#d8cf3c',habitat:{en:'Watersides, farmland, meadows and towns.',da:'Vandkanter, landbrugsland, enge og byer.'}},
+ {id:'bombycilla_garrulus',latin:'Bombycilla garrulus',name:{en:'Bohemian Waxwing',da:'Silkehale'},size:'18–21 cm',status:'LC',c1:'#6e5636',c2:'#a5824f',habitat:{en:'Undergrowth, hedges, gardens and woodland.',da:'Underskov, hegn, haver og skov.'}},
+ {id:'troglodytes_troglodytes',latin:'Troglodytes troglodytes',name:{en:'Eurasian Wren',da:'Gærdesmutte'},size:'9–10 cm',status:'LC',c1:'#6e5636',c2:'#a5824f',habitat:{en:'Undergrowth, hedges, gardens and woodland.',da:'Underskov, hegn, haver og skov.'}},
+ {id:'prunella_modularis',latin:'Prunella modularis',name:{en:'Dunnock',da:'Jernspurv'},size:'13–15 cm',status:'LC',c1:'#6e5636',c2:'#a5824f',habitat:{en:'Undergrowth, hedges, gardens and woodland.',da:'Underskov, hegn, haver og skov.'}},
+ {id:'erithacus_rubecula',latin:'Erithacus rubecula',name:{en:'European Robin',da:'Rødhals'},size:'12.5–14 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'luscinia_luscinia',latin:'Luscinia luscinia',name:{en:'Thrush Nightingale',da:'Nattergal'},size:'15–17 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'luscinia_svecica',latin:'Luscinia svecica',name:{en:'Bluethroat',da:'Blåhals'},size:'13–14 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'phoenicurus_ochruros',latin:'Phoenicurus ochruros',name:{en:'Black Redstart',da:'Husrødstjert'},size:'13–15 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'phoenicurus_phoenicurus',latin:'Phoenicurus phoenicurus',name:{en:'Common Redstart',da:'Rødstjert'},size:'13–15 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'saxicola_rubetra',latin:'Saxicola rubetra',name:{en:'Whinchat',da:'Bynkefugl'},size:'12–14 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'saxicola_rubicola',latin:'Saxicola rubicola',name:{en:'European Stonechat',da:'Sortstrubet Bynkefugl'},size:'11.5–13 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'oenanthe_oenanthe',latin:'Oenanthe oenanthe',name:{en:'Northern Wheatear',da:'Stenpikker'},size:'14–16 cm',status:'LC',c1:'#b5613a',c2:'#7a6f5f',habitat:{en:'Scrub, hedges, gardens, heaths and open ground.',da:'Krat, hegn, haver, heder og åben bund.'}},
+ {id:'turdus_merula',latin:'Turdus merula',name:{en:'Common Blackbird',da:'Solsort'},size:'23.5–29 cm',status:'LC',c1:'#6a5a45',c2:'#3a2f22',habitat:{en:'Woodland, parks, gardens and open farmland.',da:'Skov, parker, haver og åbent landbrugsland.'}},
+ {id:'turdus_pilaris',latin:'Turdus pilaris',name:{en:'Fieldfare',da:'Sjagger'},size:'22–27 cm',status:'LC',c1:'#6a5a45',c2:'#3a2f22',habitat:{en:'Woodland, parks, gardens and open farmland.',da:'Skov, parker, haver og åbent landbrugsland.'}},
+ {id:'turdus_philomelos',latin:'Turdus philomelos',name:{en:'Song Thrush',da:'Sangdrossel'},size:'20–24 cm',status:'LC',c1:'#6a5a45',c2:'#3a2f22',habitat:{en:'Woodland, parks, gardens and open farmland.',da:'Skov, parker, haver og åbent landbrugsland.'}},
+ {id:'turdus_iliacus',latin:'Turdus iliacus',name:{en:'Redwing',da:'Vindrossel'},size:'19–23 cm',status:'LC',c1:'#6a5a45',c2:'#3a2f22',habitat:{en:'Woodland, parks, gardens and open farmland.',da:'Skov, parker, haver og åbent landbrugsland.'}},
+ {id:'turdus_viscivorus',latin:'Turdus viscivorus',name:{en:'Mistle Thrush',da:'Misteldrossel'},size:'26–29 cm',status:'LC',c1:'#6a5a45',c2:'#3a2f22',habitat:{en:'Woodland, parks, gardens and open farmland.',da:'Skov, parker, haver og åbent landbrugsland.'}},
+ {id:'locustella_naevia',latin:'Locustella naevia',name:{en:'Common Grasshopper Warbler',da:'Græshoppesanger'},size:'12–13 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'acrocephalus_schoenobaenus',latin:'Acrocephalus schoenobaenus',name:{en:'Sedge Warbler',da:'Sivsanger'},size:'11.5–13 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'acrocephalus_palustris',latin:'Acrocephalus palustris',name:{en:'Marsh Warbler',da:'Kærsanger'},size:'12–13 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'acrocephalus_scirpaceus',latin:'Acrocephalus scirpaceus',name:{en:'Eurasian Reed Warbler',da:'Rørsanger'},size:'12–14 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'acrocephalus_arundinaceus',latin:'Acrocephalus arundinaceus',name:{en:'Great Reed Warbler',da:'Drosselrørsanger'},size:'16–20 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'hippolais_icterina',latin:'Hippolais icterina',name:{en:'Icterine Warbler',da:'Gulbug'},size:'12–14 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'sylvia_atricapilla',latin:'Sylvia atricapilla',name:{en:'Eurasian Blackcap',da:'Munk'},size:'13–15 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'sylvia_borin',latin:'Sylvia borin',name:{en:'Garden Warbler',da:'Havesanger'},size:'13–15 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'sylvia_communis',latin:'Sylvia communis',name:{en:'Common Whitethroat',da:'Tornsanger'},size:'13–15 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'sylvia_curruca',latin:'Sylvia curruca',name:{en:'Lesser Whitethroat',da:'Gærdesanger'},size:'12–14 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'phylloscopus_trochilus',latin:'Phylloscopus trochilus',name:{en:'Willow Warbler',da:'Løvsanger'},size:'11–13 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'phylloscopus_collybita',latin:'Phylloscopus collybita',name:{en:'Common Chiffchaff',da:'Gransanger'},size:'10–12 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'phylloscopus_sibilatrix',latin:'Phylloscopus sibilatrix',name:{en:'Wood Warbler',da:'Skovsanger'},size:'11–13 cm',status:'LC',c1:'#8a8a5a',c2:'#6a6a3f',habitat:{en:'Reedbeds, scrub, hedges and woodland.',da:'Rørskove, krat, hegn og skov.'}},
+ {id:'regulus_regulus',latin:'Regulus regulus',name:{en:'Goldcrest',da:'Fuglekonge'},size:'8.5–9.5 cm',status:'LC',c1:'#6a8a4a',c2:'#d3a83c',habitat:{en:'Conifers and mixed woodland.',da:'Nåleskov og blandet skov.'}},
+ {id:'regulus_ignicapilla',latin:'Regulus ignicapilla',name:{en:'Common Firecrest',da:'Rødtoppet Fuglekonge'},size:'9–10 cm',status:'LC',c1:'#6a8a4a',c2:'#d3a83c',habitat:{en:'Conifers and mixed woodland.',da:'Nåleskov og blandet skov.'}},
+ {id:'muscicapa_striata',latin:'Muscicapa striata',name:{en:'Spotted Flycatcher',da:'Grå Fluesnapper'},size:'13.5–15 cm',status:'LC',c1:'#6a6258',c2:'#3a352e',habitat:{en:'Woodland, parks and gardens.',da:'Skov, parker og haver.'}},
+ {id:'ficedula_hypoleuca',latin:'Ficedula hypoleuca',name:{en:'European Pied Flycatcher',da:'Broget Fluesnapper'},size:'12–13.5 cm',status:'LC',c1:'#6a6258',c2:'#3a352e',habitat:{en:'Woodland, parks and gardens.',da:'Skov, parker og haver.'}},
+ {id:'aegithalos_caudatus',latin:'Aegithalos caudatus',name:{en:'Long-tailed Tit',da:'Halemejse'},size:'13–15 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'poecile_palustris',latin:'Poecile palustris',name:{en:'Marsh Tit',da:'Sumpmejse'},size:'11.5–13 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'poecile_montanus',latin:'Poecile montanus',name:{en:'Willow Tit',da:'Fyrremejse'},size:'11.5–13 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'lophophanes_cristatus',latin:'Lophophanes cristatus',name:{en:'European Crested Tit',da:'Topmejse'},size:'11–12 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'periparus_ater',latin:'Periparus ater',name:{en:'Coal Tit',da:'Sortmejse'},size:'10–11.5 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'cyanistes_caeruleus',latin:'Cyanistes caeruleus',name:{en:'Eurasian Blue Tit',da:'Blåmejse'},size:'10.5–12 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'parus_major',latin:'Parus major',name:{en:'Great Tit',da:'Musvit'},size:'13.5–15 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'panurus_biarmicus',latin:'Panurus biarmicus',name:{en:'Bearded Reedling',da:'Skægmejse'},size:'14–17 cm',status:'LC',c1:'#6a8a4a',c2:'#e3c832',habitat:{en:'Woodland, hedges, reedbeds and gardens.',da:'Skov, hegn, rørskove og haver.'}},
+ {id:'sitta_europaea',latin:'Sitta europaea',name:{en:'Eurasian Nuthatch',da:'Spætmejse'},size:'12–14.5 cm',status:'LC',c1:'#5a7a9a',c2:'#c98a5a',habitat:{en:'Mature deciduous woodland and parks.',da:'Gammel løvskov og parker.'}},
+ {id:'certhia_familiaris',latin:'Certhia familiaris',name:{en:'Eurasian Treecreeper',da:'Træløber'},size:'12.5–14 cm',status:'LC',c1:'#8a7a5a',c2:'#c9bfa5',habitat:{en:'Woodland with mature trees.',da:'Skov med gamle træer.'}},
+ {id:'certhia_brachydactyla',latin:'Certhia brachydactyla',name:{en:'Short-toed Treecreeper',da:'Korttået Træløber'},size:'12–13 cm',status:'LC',c1:'#8a7a5a',c2:'#c9bfa5',habitat:{en:'Woodland with mature trees.',da:'Skov med gamle træer.'}},
+ {id:'lanius_collurio',latin:'Lanius collurio',name:{en:'Red-backed Shrike',da:'Rødrygget Tornskade'},size:'16–18 cm',status:'LC',c1:'#7a6f5f',c2:'#b5613a',habitat:{en:'Scrub, heath, hedgerows and woodland edges.',da:'Krat, heder, levende hegn og skovbryn.'}},
+ {id:'lanius_excubitor',latin:'Lanius excubitor',name:{en:'Great Grey Shrike',da:'Stor Tornskade'},size:'22–26 cm',status:'LC',c1:'#7a6f5f',c2:'#b5613a',habitat:{en:'Scrub, heath, hedgerows and woodland edges.',da:'Krat, heder, levende hegn og skovbryn.'}},
+ {id:'oriolus_oriolus',latin:'Oriolus oriolus',name:{en:'Eurasian Golden Oriole',da:'Pirol'},size:'24–25 cm',status:'LC',c1:'#d3b02a',c2:'#2b2b2b',habitat:{en:'Mature deciduous woodland and poplar stands.',da:'Gammel løvskov og poppelbevoksninger.'}},
+ {id:'garrulus_glandarius',latin:'Garrulus glandarius',name:{en:'Eurasian Jay',da:'Skovskade'},size:'32–35 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'pica_pica',latin:'Pica pica',name:{en:'Eurasian Magpie',da:'Husskade'},size:'40–51 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'corvus_monedula',latin:'Corvus monedula',name:{en:'Western Jackdaw',da:'Allike'},size:'32–39 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'corvus_frugilegus',latin:'Corvus frugilegus',name:{en:'Rook',da:'Råge'},size:'44–46 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'corvus_corone',latin:'Corvus corone',name:{en:'Carrion Crow',da:'Sortkrage'},size:'44–51 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'corvus_cornix',latin:'Corvus cornix',name:{en:'Hooded Crow',da:'Gråkrage'},size:'44–51 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'corvus_corax',latin:'Corvus corax',name:{en:'Northern Raven',da:'Ravn'},size:'54–67 cm',status:'LC',c1:'#2b2f33',c2:'#4a5158',habitat:{en:'Woodland, farmland, towns and coasts.',da:'Skov, landbrugsland, byer og kyster.'}},
+ {id:'sturnus_vulgaris',latin:'Sturnus vulgaris',name:{en:'Common Starling',da:'Stær'},size:'19–23 cm',status:'LC',c1:'#2b2b3a',c2:'#6a8a4a',habitat:{en:'Farmland, towns, gardens and reedbeds.',da:'Landbrugsland, byer, haver og rørskove.'}},
+ {id:'passer_domesticus',latin:'Passer domesticus',name:{en:'House Sparrow',da:'Gråspurv'},size:'14–16 cm',status:'LC',c1:'#8a6f4d',c2:'#5a4632',habitat:{en:'Towns, farms, hedges and gardens.',da:'Byer, gårde, hegn og haver.'}},
+ {id:'passer_montanus',latin:'Passer montanus',name:{en:'Eurasian Tree Sparrow',da:'Skovspurv'},size:'12.5–14 cm',status:'LC',c1:'#8a6f4d',c2:'#5a4632',habitat:{en:'Towns, farms, hedges and gardens.',da:'Byer, gårde, hegn og haver.'}},
+ {id:'fringilla_coelebs',latin:'Fringilla coelebs',name:{en:'Common Chaffinch',da:'Bogfinke'},size:'14–16 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'fringilla_montifringilla',latin:'Fringilla montifringilla',name:{en:'Brambling',da:'Kvækerfinke'},size:'14–16 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'coccothraustes_coccothraustes',latin:'Coccothraustes coccothraustes',name:{en:'Hawfinch',da:'Kernebider'},size:'16.5–18 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'chloris_chloris',latin:'Chloris chloris',name:{en:'European Greenfinch',da:'Grønirisk'},size:'14–16 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'carduelis_carduelis',latin:'Carduelis carduelis',name:{en:'European Goldfinch',da:'Stillits'},size:'12–13 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'spinus_spinus',latin:'Spinus spinus',name:{en:'Eurasian Siskin',da:'Grønsisken'},size:'11–12.5 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'linaria_cannabina',latin:'Linaria cannabina',name:{en:'Common Linnet',da:'Tornirisk'},size:'12.5–14 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'acanthis_flammea',latin:'Acanthis flammea',name:{en:'Common Redpoll',da:'Gråsisken'},size:'11.5–14 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'loxia_curvirostra',latin:'Loxia curvirostra',name:{en:'Red Crossbill',da:'Lille Korsnæb'},size:'15–17 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'pyrrhula_pyrrhula',latin:'Pyrrhula pyrrhula',name:{en:'Eurasian Bullfinch',da:'Dompap'},size:'15–17 cm',status:'LC',c1:'#b5613a',c2:'#8faf3e',habitat:{en:'Woodland, farmland, gardens and weedy ground.',da:'Skov, landbrugsland, haver og ukrudtsmarker.'}},
+ {id:'emberiza_citrinella',latin:'Emberiza citrinella',name:{en:'Yellowhammer',da:'Gulspurv'},size:'15.5–17 cm',status:'LC',c1:'#c9a83c',c2:'#6a5f3a',habitat:{en:'Farmland, reedbeds, heaths and coasts.',da:'Landbrugsland, rørskove, heder og kyster.'}},
+ {id:'emberiza_schoeniclus',latin:'Emberiza schoeniclus',name:{en:'Common Reed Bunting',da:'Rørspurv'},size:'13.5–16 cm',status:'LC',c1:'#c9a83c',c2:'#6a5f3a',habitat:{en:'Farmland, reedbeds, heaths and coasts.',da:'Landbrugsland, rørskove, heder og kyster.'}},
+ {id:'emberiza_calandra',latin:'Emberiza calandra',name:{en:'Corn Bunting',da:'Bomlærke'},size:'16–19 cm',status:'LC',c1:'#c9a83c',c2:'#6a5f3a',habitat:{en:'Farmland, reedbeds, heaths and coasts.',da:'Landbrugsland, rørskove, heder og kyster.'}},
+ {id:'plectrophenax_nivalis',latin:'Plectrophenax nivalis',name:{en:'Snow Bunting',da:'Snespurv'},size:'15–18 cm',status:'LC',c1:'#c9a83c',c2:'#6a5f3a',habitat:{en:'Farmland, reedbeds, heaths and coasts.',da:'Landbrugsland, rørskove, heder og kyster.'}},
+ {id:'calcarius_lapponicus',latin:'Calcarius lapponicus',name:{en:'Lapland Longspur',da:'Laplandsværling'},size:'14–16 cm',status:'LC',c1:'#c9a83c',c2:'#6a5f3a',habitat:{en:'Farmland, reedbeds, heaths and coasts.',da:'Landbrugsland, rørskove, heder og kyster.'}}
 ];
 const birdById = id => BIRDS.find(b => b.id === id);
+const FAMILIES = {'Accipitridae':{en:'Hawks, eagles and allies',da:'Høgefugle'},'Acrocephalidae':{en:'Reed warblers',da:'Rørsangere'},'Aegithalidae':{en:'Long-tailed tits',da:'Halemejser'},'Alaudidae':{en:'Larks',da:'Lærker'},'Alcedinidae':{en:'Kingfishers',da:'Isfugle'},'Alcidae':{en:'Auks',da:'Alkefugle'},'Anatidae':{en:'Ducks, geese and swans',da:'Andefugle'},'Apodidae':{en:'Swifts',da:'Sejlere'},'Ardeidae':{en:'Herons and bitterns',da:'Hejrer'},'Bombycillidae':{en:'Waxwings',da:'Silkehaler'},'Caprimulgidae':{en:'Nightjars',da:'Natravne'},'Certhiidae':{en:'Treecreepers',da:'Træløbere'},'Charadriidae':{en:'Plovers and lapwings',da:'Brokfugle'},'Ciconiidae':{en:'Storks',da:'Storke'},'Columbidae':{en:'Pigeons and doves',da:'Duer'},'Corvidae':{en:'Crows and allies',da:'Kragefugle'},'Cuculidae':{en:'Cuckoos',da:'Gøge'},'Emberizidae':{en:'Buntings',da:'Værlinger'},'Falconidae':{en:'Falcons',da:'Falke'},'Fringillidae':{en:'Finches',da:'Finker'},'Gaviidae':{en:'Divers',da:'Lommer'},'Gruidae':{en:'Cranes',da:'Traner'},'Haematopodidae':{en:'Oystercatchers',da:'Strandskader'},'Hirundinidae':{en:'Swallows and martins',da:'Svaler'},'Laniidae':{en:'Shrikes',da:'Tornskader'},'Laridae':{en:'Gulls and terns',da:'Måger og terner'},'Locustellidae':{en:'Grass warblers',da:'Græshoppesangere'},'Motacillidae':{en:'Wagtails and pipits',da:'Vipstjerter og pibere'},'Muscicapidae':{en:'Chats and flycatchers',da:'Fluesnappere'},'Oriolidae':{en:'Orioles',da:'Piroler'},'Pandionidae':{en:'Ospreys',da:'Fiskeørne'},'Panuridae':{en:'Bearded reedling',da:'Skægmejser'},'Paridae':{en:'Tits',da:'Mejser'},'Passeridae':{en:'Old World sparrows',da:'Spurve'},'Phalacrocoracidae':{en:'Cormorants',da:'Skarver'},'Phasianidae':{en:'Pheasants and partridges',da:'Fasanfugle'},'Phylloscopidae':{en:'Leaf warblers',da:'Løvsangere'},'Picidae':{en:'Woodpeckers',da:'Spætter'},'Podicipedidae':{en:'Grebes',da:'Lappedykkere'},'Prunellidae':{en:'Accentors',da:'Jernspurve'},'Rallidae':{en:'Rails, crakes and coots',da:'Vandhøns'},'Recurvirostridae':{en:'Avocets and stilts',da:'Klyder'},'Regulidae':{en:'Kinglets',da:'Fuglekonger'},'Scolopacidae':{en:'Sandpipers and allies',da:'Sneppefugle'},'Sittidae':{en:'Nuthatches',da:'Spætmejser'},'Stercorariidae':{en:'Skuas',da:'Kjover'},'Strigidae':{en:'Typical owls',da:'Ugler'},'Sturnidae':{en:'Starlings',da:'Stære'},'Sulidae':{en:'Gannets',da:'Suler'},'Sylviidae':{en:'Sylviid warblers',da:'Sangere'},'Threskiornithidae':{en:'Ibises and spoonbills',da:'Ibisser'},'Troglodytidae':{en:'Wrens',da:'Gærdesmutter'},'Turdidae':{en:'Thrushes',da:'Drosler'},'Tytonidae':{en:'Barn owls',da:'Slørugler'}};
+const ORDERS = {'Anseriformes':{en:'Waterfowl',da:'Andefugle'},'Apodiformes':{en:'Swifts',da:'Sejlere'},'Caprimulgiformes':{en:'Nightjars',da:'Natravne'},'Charadriiformes':{en:'Shorebirds',da:'Mågevadefugle'},'Ciconiiformes':{en:'Storks',da:'Storkefugle'},'Columbiformes':{en:'Pigeons and doves',da:'Duefugle'},'Coraciiformes':{en:'Kingfishers and allies',da:'Skrigefugle'},'Cuculiformes':{en:'Cuckoos',da:'Cuculiformes'},'Falconiformes':{en:'Birds of prey',da:'Rovfugle'},'Galliformes':{en:'Gamebirds',da:'Hønsefugle'},'Gaviiformes':{en:'Divers',da:'Lommer'},'Gruiformes':{en:'Cranes and rails',da:'Tranefugle'},'Passeriformes':{en:'Perching birds',da:'Spurvefugle'},'Pelecaniformes':{en:'Herons and allies',da:'Årefodede'},'Piciformes':{en:'Woodpeckers',da:'Spættefugle'},'Podicipediformes':{en:'Grebes',da:'Lappedykkere'},'Strigiformes':{en:'Owls',da:'Ugler'},'Suliformes':{en:'Cormorants and gannets',da:'Sulefugle'}};
+const FAM2ORD = {'Accipitridae':'Falconiformes','Acrocephalidae':'Passeriformes','Aegithalidae':'Passeriformes','Alaudidae':'Passeriformes','Alcedinidae':'Coraciiformes','Alcidae':'Charadriiformes','Anatidae':'Anseriformes','Apodidae':'Apodiformes','Ardeidae':'Pelecaniformes','Bombycillidae':'Passeriformes','Caprimulgidae':'Caprimulgiformes','Certhiidae':'Passeriformes','Charadriidae':'Charadriiformes','Ciconiidae':'Ciconiiformes','Columbidae':'Columbiformes','Corvidae':'Passeriformes','Cuculidae':'Cuculiformes','Emberizidae':'Passeriformes','Falconidae':'Falconiformes','Fringillidae':'Passeriformes','Gaviidae':'Gaviiformes','Gruidae':'Gruiformes','Haematopodidae':'Charadriiformes','Hirundinidae':'Passeriformes','Laniidae':'Passeriformes','Laridae':'Charadriiformes','Locustellidae':'Passeriformes','Motacillidae':'Passeriformes','Muscicapidae':'Passeriformes','Oriolidae':'Passeriformes','Pandionidae':'Falconiformes','Panuridae':'Passeriformes','Paridae':'Passeriformes','Passeridae':'Passeriformes','Phalacrocoracidae':'Suliformes','Phasianidae':'Galliformes','Phylloscopidae':'Passeriformes','Picidae':'Piciformes','Podicipedidae':'Podicipediformes','Prunellidae':'Passeriformes','Rallidae':'Gruiformes','Recurvirostridae':'Charadriiformes','Regulidae':'Passeriformes','Scolopacidae':'Charadriiformes','Sittidae':'Passeriformes','Stercorariidae':'Charadriiformes','Strigidae':'Strigiformes','Sturnidae':'Passeriformes','Sulidae':'Suliformes','Sylviidae':'Passeriformes','Threskiornithidae':'Pelecaniformes','Troglodytidae':'Passeriformes','Turdidae':'Passeriformes','Tytonidae':'Strigiformes'};
+const BIRD_FAM = {'gavia_stellata':'Gaviidae','gavia_arctica':'Gaviidae','tachybaptus_ruficollis':'Podicipedidae','podiceps_cristatus':'Podicipedidae','podiceps_grisegena':'Podicipedidae','podiceps_auritus':'Podicipedidae','podiceps_nigricollis':'Podicipedidae','phalacrocorax_carbo':'Phalacrocoracidae','morus_bassanus':'Sulidae','botaurus_stellaris':'Ardeidae','ardea_cinerea':'Ardeidae','ardea_alba':'Ardeidae','egretta_garzetta':'Ardeidae','platalea_leucorodia':'Threskiornithidae','ciconia_ciconia':'Ciconiidae','cygnus_olor':'Anatidae','cygnus_cygnus':'Anatidae','cygnus_columbianus':'Anatidae','anser_anser':'Anatidae','anser_fabalis':'Anatidae','anser_brachyrhynchus':'Anatidae','anser_albifrons':'Anatidae','branta_canadensis':'Anatidae','branta_leucopsis':'Anatidae','branta_bernicla':'Anatidae','tadorna_tadorna':'Anatidae','mareca_penelope':'Anatidae','mareca_strepera':'Anatidae','anas_crecca':'Anatidae','anas_platyrhynchos':'Anatidae','anas_acuta':'Anatidae','spatula_querquedula':'Anatidae','spatula_clypeata':'Anatidae','aythya_ferina':'Anatidae','aythya_fuligula':'Anatidae','aythya_marila':'Anatidae','somateria_mollissima':'Anatidae','clangula_hyemalis':'Anatidae','melanitta_nigra':'Anatidae','melanitta_fusca':'Anatidae','bucephala_clangula':'Anatidae','mergellus_albellus':'Anatidae','mergus_serrator':'Anatidae','mergus_merganser':'Anatidae','pernis_apivorus':'Accipitridae','milvus_milvus':'Accipitridae','milvus_migrans':'Accipitridae','haliaeetus_albicilla':'Accipitridae','circus_aeruginosus':'Accipitridae','circus_cyaneus':'Accipitridae','accipiter_gentilis':'Accipitridae','accipiter_nisus':'Accipitridae','buteo_buteo':'Accipitridae','buteo_lagopus':'Accipitridae','pandion_haliaetus':'Pandionidae','falco_tinnunculus':'Falconidae','falco_columbarius':'Falconidae','falco_subbuteo':'Falconidae','falco_peregrinus':'Falconidae','perdix_perdix':'Phasianidae','coturnix_coturnix':'Phasianidae','phasianus_colchicus':'Phasianidae','rallus_aquaticus':'Rallidae','crex_crex':'Rallidae','gallinula_chloropus':'Rallidae','fulica_atra':'Rallidae','grus_grus':'Gruidae','haematopus_ostralegus':'Haematopodidae','recurvirostra_avosetta':'Recurvirostridae','charadrius_dubius':'Charadriidae','charadrius_hiaticula':'Charadriidae','pluvialis_apricaria':'Charadriidae','pluvialis_squatarola':'Charadriidae','vanellus_vanellus':'Charadriidae','calidris_canutus':'Scolopacidae','calidris_alba':'Scolopacidae','calidris_minuta':'Scolopacidae','calidris_ferruginea':'Scolopacidae','calidris_maritima':'Scolopacidae','calidris_alpina':'Scolopacidae','calidris_pugnax':'Scolopacidae','lymnocryptes_minimus':'Scolopacidae','gallinago_gallinago':'Scolopacidae','scolopax_rusticola':'Scolopacidae','limosa_limosa':'Scolopacidae','limosa_lapponica':'Scolopacidae','numenius_phaeopus':'Scolopacidae','numenius_arquata':'Scolopacidae','tringa_erythropus':'Scolopacidae','tringa_totanus':'Scolopacidae','tringa_nebularia':'Scolopacidae','tringa_ochropus':'Scolopacidae','tringa_glareola':'Scolopacidae','actitis_hypoleucos':'Scolopacidae','arenaria_interpres':'Scolopacidae','stercorarius_parasiticus':'Stercorariidae','chroicocephalus_ridibundus':'Laridae','hydrocoloeus_minutus':'Laridae','larus_canus':'Laridae','larus_marinus':'Laridae','larus_argentatus':'Laridae','larus_fuscus':'Laridae','larus_michahellis':'Laridae','rissa_tridactyla':'Laridae','sternula_albifrons':'Laridae','chlidonias_niger':'Laridae','hydroprogne_caspia':'Laridae','thalasseus_sandvicensis':'Laridae','sterna_hirundo':'Laridae','sterna_paradisaea':'Laridae','uria_aalge':'Alcidae','alca_torda':'Alcidae','cepphus_grylle':'Alcidae','fratercula_arctica':'Alcidae','columba_livia':'Columbidae','columba_oenas':'Columbidae','columba_palumbus':'Columbidae','streptopelia_decaocto':'Columbidae','streptopelia_turtur':'Columbidae','cuculus_canorus':'Cuculidae','tyto_alba':'Tytonidae','athene_noctua':'Strigidae','strix_aluco':'Strigidae','asio_otus':'Strigidae','asio_flammeus':'Strigidae','caprimulgus_europaeus':'Caprimulgidae','apus_apus':'Apodidae','alcedo_atthis':'Alcedinidae','jynx_torquilla':'Picidae','picus_viridis':'Picidae','dryocopus_martius':'Picidae','dendrocopos_major':'Picidae','dryobates_minor':'Picidae','lullula_arborea':'Alaudidae','alauda_arvensis':'Alaudidae','galerida_cristata':'Alaudidae','riparia_riparia':'Hirundinidae','hirundo_rustica':'Hirundinidae','delichon_urbicum':'Hirundinidae','anthus_trivialis':'Motacillidae','anthus_pratensis':'Motacillidae','anthus_petrosus':'Motacillidae','motacilla_flava':'Motacillidae','motacilla_cinerea':'Motacillidae','motacilla_alba':'Motacillidae','bombycilla_garrulus':'Bombycillidae','troglodytes_troglodytes':'Troglodytidae','prunella_modularis':'Prunellidae','erithacus_rubecula':'Muscicapidae','luscinia_luscinia':'Muscicapidae','luscinia_svecica':'Muscicapidae','phoenicurus_ochruros':'Muscicapidae','phoenicurus_phoenicurus':'Muscicapidae','saxicola_rubetra':'Muscicapidae','saxicola_rubicola':'Muscicapidae','oenanthe_oenanthe':'Muscicapidae','turdus_merula':'Turdidae','turdus_pilaris':'Turdidae','turdus_philomelos':'Turdidae','turdus_iliacus':'Turdidae','turdus_viscivorus':'Turdidae','locustella_naevia':'Locustellidae','acrocephalus_schoenobaenus':'Acrocephalidae','acrocephalus_palustris':'Acrocephalidae','acrocephalus_scirpaceus':'Acrocephalidae','acrocephalus_arundinaceus':'Acrocephalidae','hippolais_icterina':'Acrocephalidae','sylvia_atricapilla':'Sylviidae','sylvia_borin':'Sylviidae','sylvia_communis':'Sylviidae','sylvia_curruca':'Sylviidae','phylloscopus_trochilus':'Phylloscopidae','phylloscopus_collybita':'Phylloscopidae','phylloscopus_sibilatrix':'Phylloscopidae','regulus_regulus':'Regulidae','regulus_ignicapilla':'Regulidae','muscicapa_striata':'Muscicapidae','ficedula_hypoleuca':'Muscicapidae','aegithalos_caudatus':'Aegithalidae','poecile_palustris':'Paridae','poecile_montanus':'Paridae','lophophanes_cristatus':'Paridae','periparus_ater':'Paridae','cyanistes_caeruleus':'Paridae','parus_major':'Paridae','panurus_biarmicus':'Panuridae','sitta_europaea':'Sittidae','certhia_familiaris':'Certhiidae','certhia_brachydactyla':'Certhiidae','lanius_collurio':'Laniidae','lanius_excubitor':'Laniidae','oriolus_oriolus':'Oriolidae','garrulus_glandarius':'Corvidae','pica_pica':'Corvidae','corvus_monedula':'Corvidae','corvus_frugilegus':'Corvidae','corvus_corone':'Corvidae','corvus_cornix':'Corvidae','corvus_corax':'Corvidae','sturnus_vulgaris':'Sturnidae','passer_domesticus':'Passeridae','passer_montanus':'Passeridae','fringilla_coelebs':'Fringillidae','fringilla_montifringilla':'Fringillidae','coccothraustes_coccothraustes':'Fringillidae','chloris_chloris':'Fringillidae','carduelis_carduelis':'Fringillidae','spinus_spinus':'Fringillidae','linaria_cannabina':'Fringillidae','acanthis_flammea':'Fringillidae','loxia_curvirostra':'Fringillidae','pyrrhula_pyrrhula':'Fringillidae','emberiza_citrinella':'Emberizidae','emberiza_schoeniclus':'Emberizidae','emberiza_calandra':'Emberizidae','plectrophenax_nivalis':'Emberizidae','calcarius_lapponicus':'Emberizidae'};
+function famInfo(b){const f=BIRD_FAM[b.id];const n=FAMILIES[f]||{};return {latin:f, name:(n[lang]||f)};}
+function ordInfo(b){const f=BIRD_FAM[b.id];const o=FAM2ORD[f];const n=ORDERS[o]||{};return {latin:o, name:(n[lang]||o)};}
 function birdSVG(fill){
   return `<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg"><path fill="${fill}" d="M14 40c-4-1-8-4-10-8 3 0 5 0 7-1-3-2-5-6-5-10 2 2 5 3 8 3 2-6 8-11 15-11 8 0 15 6 16 14l12-5-8 10c1 12-8 22-21 22-4 0-8-1-11-3l-8 5 3-8c-2-2-3-5-4-8z" transform="scale(.9) translate(4 4)"/></svg>`;
 }
@@ -371,6 +575,8 @@ const I18N = {
   dfToken:'Cadastral map token', saveToken:'Save token',
   tokenNote:'The parcel-boundary overlay (Matrikelkortet) uses the free Danish Dataforsyningen service. Create a free user at dataforsyningen.dk, generate a token, and paste it here. Stored on this device.',
   latinName:'Scientific name', sizeLbl:'Size', statusLbl:'Conservation status (IUCN)', habitatLbl:'Habitat',
+  stLC:'Least Concern', stNT:'Near Threatened', stVU:'Vulnerable', stEN:'Endangered', stCR:'Critically Endangered', stDD:'Data Deficient',
+  orderLbl:'Order', familyLbl:'Family', orderBadges:'Orders', familyBadges:'Families', firstOfOrder:'First bird of this order', firstOfFamily:'First bird of this family',
   lc:'Least Concern', seen:'Seen', notSeen:'Not yet observed',
   firstSeen:'First seen', emptyTimeline:'No sightings yet. Log your first bird under “New sighting”!',
   needSpecies:'Please choose a species.', needLocation:'Please pinpoint the location.',
@@ -378,8 +584,7 @@ const I18N = {
   confirmDelete:'Delete this sighting?', del:'delete', saving:'Saving…',
   locating:'Locating…', locOk:'Location set — drag the pin to fine-tune.', locErr:'Could not get location. Drag the pin manually.',
   tokenMissing:'Add your Dataforsyningen token under Profile to show cadastral parcels.',
-  b1:'First Bird', b5:'Five Species', b10:'Full House — all 10!',
-  b1d:'Observe your first species', b5d:'Observe 5 different species', b10d:'Observe all 10 species',
+  bFirst:'First Bird', bSpecies:'Species', bDesc1:'Observe your first species', bDescN:'Observe %n different species',
   photoTip:'Photo added ✓', you:'You', otherUser:'Another watcher',
   searchSpecies:'Search species…', cropBtn:'Crop photo', cropApply:'Use crop', cropCancel:'Cancel',
   cropHint:'Drag the box over the bird — resize with the gold handle.',
@@ -408,6 +613,8 @@ const I18N = {
   dfToken:'Matrikelkort-token', saveToken:'Gem token',
   tokenNote:'Matrikel-laget bruger den gratis tjeneste Dataforsyningen. Opret en gratis bruger på dataforsyningen.dk, generér en token og indsæt den her. Gemmes på denne enhed.',
   latinName:'Videnskabeligt navn', sizeLbl:'Størrelse', statusLbl:'Bevaringsstatus (IUCN)', habitatLbl:'Levested',
+  stLC:'Livskraftig', stNT:'Næsten truet', stVU:'Sårbar', stEN:'Truet', stCR:'Kritisk truet', stDD:'Utilstrækkelige data',
+  orderLbl:'Orden', familyLbl:'Familie', orderBadges:'Ordener', familyBadges:'Familier', firstOfOrder:'Første fugl i denne orden', firstOfFamily:'Første fugl i denne familie',
   lc:'Livskraftig', seen:'Set', notSeen:'Endnu ikke observeret',
   firstSeen:'Først set', emptyTimeline:'Ingen observationer endnu. Log din første fugl under “Ny observation”!',
   needSpecies:'Vælg venligst en art.', needLocation:'Angiv venligst placeringen.',
@@ -415,8 +622,7 @@ const I18N = {
   confirmDelete:'Slet denne observation?', del:'slet', saving:'Gemmer…',
   locating:'Finder placering…', locOk:'Placering sat — træk i nålen for at finjustere.', locErr:'Kunne ikke finde placering. Træk nålen manuelt.',
   tokenMissing:'Tilføj din Dataforsyningen-token under Profil for at vise matrikelkortet.',
-  b1:'Første Fugl', b5:'Fem Arter', b10:'Fuldt Hus — alle 10!',
-  b1d:'Observér din første art', b5d:'Observér 5 forskellige arter', b10d:'Observér alle 10 arter',
+  bFirst:'Første Fugl', bSpecies:'Arter', bDesc1:'Observér din første art', bDescN:'Observér %n forskellige arter',
   photoTip:'Foto tilføjet ✓', you:'Dig', otherUser:'Anden fuglekigger',
   searchSpecies:'Søg efter art…', cropBtn:'Beskær foto', cropApply:'Brug beskæring', cropCancel:'Annullér',
   cropHint:'Træk boksen hen over fuglen — ændr størrelse med det gyldne håndtag.',
@@ -517,6 +723,43 @@ async function loadCommunity(){
 function photoUrl(path){
   return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null;
 }
+function thumbUrl(path){
+  if (!path) return null;
+  const tp = path.replace(/\.jpg$/i, '_thumb.jpg');
+  return db.storage.from('photos').getPublicUrl(tp).data.publicUrl;
+}
+/* build a small thumbnail Blob from a full-size data URL (keeps map/timeline egress low) */
+function makeThumbBlob(dataUrl, size){
+  return new Promise(res => {
+    const img = new Image();
+    img.onload = () => {
+      const sc = Math.min(1, size / Math.max(img.width, img.height));
+      const c = document.createElement('canvas');
+      c.width = Math.round(img.width * sc); c.height = Math.round(img.height * sc);
+      c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => res(b), 'image/jpeg', .72);
+    };
+    img.src = dataUrl;
+  });
+}
+/* photo thumbnail markup: loads the small thumb, falls back to full if no thumb exists
+   (e.g. sightings logged before this feature), taps open the full image in a lightbox */
+function photoThumbHTML(path, alt, cls){
+  if (!path) return '';
+  const thumb = thumbUrl(path), full = photoUrl(path);
+  return `<img class="${cls}" src="${thumb}" alt="${alt||''}" loading="lazy"
+    onclick="openLightbox('${full}')"
+    onerror="this.onerror=null;this.src='${full}'">`;
+}
+function openLightbox(url){
+  if (!url) return;
+  document.getElementById('lightboxImg').src = url;
+  document.getElementById('lightbox').classList.add('show');
+}
+function closeLightbox(){
+  document.getElementById('lightbox').classList.remove('show');
+  document.getElementById('lightboxImg').src = '';
+}
 
 /* ============ navigation ============ */
 const NAV = [
@@ -559,7 +802,6 @@ function renderTimeline(){
   if (!sightings.length){ el.innerHTML = `<div class="empty">${t('emptyTimeline')}</div>`; return; }
   el.innerHTML = sightings.map(s => {
     const b = birdById(s.bird_id); if (!b) return '';
-    const purl = photoUrl(s.photo_path);
     return `<div class="card tl-item">
       ${avatarHTML(b)}
       <div style="flex:1;min-width:0">
@@ -570,7 +812,7 @@ function renderTimeline(){
         <div class="tl-name">${b.name[lang]}</div>
         <div class="tl-latin">${b.latin}</div>
         ${s.notes ? `<div class="tl-note">${escapeHtml(s.notes)}</div>` : ''}
-        ${purl ? `<img class="tl-photo" src="${purl}" alt="${b.name[lang]}" loading="lazy">` : ''}
+        ${photoThumbHTML(s.photo_path, b.name[lang], 'tl-photo')}
         <div class="tl-meta">
           <span class="chip">📍 ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
@@ -583,7 +825,7 @@ async function deleteSighting(id){
   if (!confirm(t('confirmDelete'))) return;
   const row = sightings.find(s => s.id === id);
   await db.from('sightings').delete().eq('id', id);
-  if (row && row.photo_path) await db.storage.from('photos').remove([row.photo_path]);
+  if (row && row.photo_path) await db.storage.from('photos').remove([row.photo_path, row.photo_path.replace(/\.jpg$/i, '_thumb.jpg')]);
   sightings = sightings.filter(s => s.id !== id);
   renderTimeline(); refreshMapMarkers(); updateStats(); toast(t('deleted'));
 }
@@ -743,6 +985,8 @@ async function saveSighting(){
       const path = `${user.id}/${saved.id}.jpg`;
       const up = await db.storage.from('photos').upload(path, dataUrlToBlob(logPhoto), {contentType:'image/jpeg', upsert:true});
       if (!up.error){
+        const thumbBlob = await makeThumbBlob(logPhoto, 320);
+        if (thumbBlob) await db.storage.from('photos').upload(`${user.id}/${saved.id}_thumb.jpg`, thumbBlob, {contentType:'image/jpeg', upsert:true});
         const upd = await db.from('sightings').update({photo_path: path}).eq('id', saved.id).select().single();
         if (upd.data) saved = upd.data;
       }
@@ -763,11 +1007,13 @@ async function saveSighting(){
 }
 
 /* ============ badges ============ */
-const MILESTONES = [
- {id:'m1', n:1, icon:'🐣', name:() => t('b1'), desc:() => t('b1d')},
- {id:'m5', n:5, icon:'🪶', name:() => t('b5'), desc:() => t('b5d')},
- {id:'m10', n:10, icon:'👑', name:() => t('b10'), desc:() => t('b10d')}
-];
+const MILE_STEPS = [[1,'🐣'],[5,'🪶'],[10,'🥉'],[25,'🥈'],[50,'🥇'],[100,'🏅'],[150,'🎖️'],[200,'👑']];
+const MILESTONES = MILE_STEPS.map(([n, icon]) => ({
+  id:'m'+n, n, icon,
+  name:() => n === 1 ? t('bFirst') : n + ' ' + t('bSpecies'),
+  desc:() => n === 1 ? t('bDesc1') : t('bDescN').replace('%n', n)
+}));
+function statusColor(code){ return {LC:'#3f7a52',NT:'#b0952f',VU:'#c2683f',EN:'#c0392b',CR:'#8e1b1b',DD:'#6b6b58'}[code] || '#6b6b58'; }
 function uniqueSpeciesSeen(){ return [...new Set(sightings.map(s => s.bird_id))]; }
 async function checkBadges(){
   const seen = uniqueSpeciesSeen(), newly = [], rows = [];
@@ -785,6 +1031,22 @@ async function checkBadges(){
       newly.push(m.name());
     }
   });
+  const seenFams = new Set(seen.map(id => BIRD_FAM[id]).filter(Boolean));
+  seenFams.forEach(f => {
+    if (!unlockedBadges['fam_'+f]){
+      unlockedBadges['fam_'+f] = new Date().toISOString();
+      rows.push({user_id: user.id, badge_id: 'fam_'+f});
+      newly.push((FAMILIES[f]&&FAMILIES[f][lang])||f);
+    }
+  });
+  const seenOrds = new Set([...seenFams].map(f => FAM2ORD[f]).filter(Boolean));
+  seenOrds.forEach(o => {
+    if (!unlockedBadges['ord_'+o]){
+      unlockedBadges['ord_'+o] = new Date().toISOString();
+      rows.push({user_id: user.id, badge_id: 'ord_'+o});
+      newly.push((ORDERS[o]&&ORDERS[o][lang])||o);
+    }
+  });
   if (rows.length) await db.from('user_badges').upsert(rows);
   renderBadges();
   return newly;
@@ -797,6 +1059,17 @@ function renderBadges(){
       <div class="bname">${m.name()}</div><div>${m.desc()}</div>
       ${u ? `<div class="bdate">${fmtDate(u)}</div>` : ''}</div>`;
   }).join('');
+  const taxaBadge = (unlockedKey, icon, title, sub) => {
+    const u = unlockedBadges[unlockedKey];
+    return `<div class="badge ${u?'':'locked'}"><div class="medal" style="font-size:1.15rem">${icon}</div>
+      <div class="bname">${title}</div>
+      <div class="bdate">${sub}</div>
+      ${u ? `<div class="bdate">${fmtDate(u)}</div>` : ''}</div>`;
+  };
+  document.getElementById('orderBadges').innerHTML = Object.keys(ORDERS).map(o =>
+    taxaBadge('ord_'+o, '🧭', (ORDERS[o][lang]||o), o)).join('');
+  document.getElementById('familyBadges').innerHTML = Object.keys(FAMILIES).map(f =>
+    taxaBadge('fam_'+f, '🪺', (FAMILIES[f][lang]||f), f)).join('');
   document.getElementById('speciesBadges').innerHTML = BIRDS.map(b => {
     const u = unlockedBadges['sp_'+b.id];
     return `<div class="badge ${u?'':'locked'}">
@@ -819,8 +1092,10 @@ function renderGuide(){
       </div>
       <dl class="guide-detail">
         <dt>${t('latinName')}</dt><dd><i>${b.latin}</i></dd>
+        <dt>${t('orderLbl')}</dt><dd>${ordInfo(b).name} <span style="color:var(--ink-soft)">(${ordInfo(b).latin})</span></dd>
+        <dt>${t('familyLbl')}</dt><dd>${famInfo(b).name} <span style="color:var(--ink-soft)">(${famInfo(b).latin})</span></dd>
         <dt>${t('sizeLbl')}</dt><dd>${b.size}</dd>
-        <dt>${t('statusLbl')}</dt><dd class="status-lc">● ${t('lc')} (LC)</dd>
+        <dt>${t('statusLbl')}</dt><dd style="font-weight:bold;color:${statusColor(b.status)}">● ${t('st'+b.status)} (${b.status})</dd>
         <dt>${t('habitatLbl')}</dt><dd>${b.habitat[lang]}</dd>
       </dl>
     </div>`).join('');
@@ -852,21 +1127,22 @@ function initMap(){
 function refreshMapMarkers(){
   if (!map) return;
   myLayer.clearLayers(); commLayer.clearLayers();
+  const popThumb = path => path
+    ? `<br>${photoThumbHTML(path, '', 'pop-thumb').replace('class="pop-thumb"', 'class="pop-thumb" style="width:150px;border-radius:8px;margin-top:6px"')}`
+    : '';
   sightings.forEach(s => {
     const b = birdById(s.bird_id); if (!b) return;
-    const purl = photoUrl(s.photo_path);
     L.marker([s.lat, s.lng], {icon: makeDot('#2d5a3d')}).addTo(myLayer)
       .bindPopup(`<div class="popup-bird">${b.name[lang]}</div>
         <div class="popup-sub"><i>${b.latin}</i><br>${fmtDate(s.seen_at)} · ${t('you')}</div>
-        ${purl ? `<img src="${purl}" style="width:150px;border-radius:8px;margin-top:6px">` : ''}`);
+        ${popThumb(s.photo_path)}`);
   });
   communityRows.forEach(c => {
     const b = birdById(c.bird_id); if (!b) return;
-    const purl = photoUrl(c.photo_path);
     L.marker([c.lat, c.lng], {icon: makeDot('#c2683f')}).addTo(commLayer)
       .bindPopup(`<div class="popup-bird">${b.name[lang]}</div>
         <div class="popup-sub"><i>${b.latin}</i><br>${fmtDate(c.seen_at)} · ${t('otherUser')}</div>
-        ${purl ? `<img src="${purl}" style="width:150px;border-radius:8px;margin-top:6px">` : ''}`);
+        ${popThumb(c.photo_path)}`);
   });
 }
 function toggleCadastral(e){
