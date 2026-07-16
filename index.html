@@ -159,6 +159,15 @@ textarea{resize:vertical;min-height:64px}
 #lightbox.show{display:flex}
 #lightbox img{max-width:96vw;max-height:92vh;border-radius:8px}
 .tl-photo,.pop-thumb{cursor:zoom-in}
+#matModal{position:fixed;inset:0;background:rgba(20,22,16,.5);z-index:3200;display:none;align-items:flex-end;justify-content:center}
+#matModal.show{display:flex}
+.mat-sheet{background:var(--cream);width:100%;max-width:640px;max-height:88vh;overflow-y:auto;border-radius:16px 16px 0 0;padding:16px 16px 34px;box-shadow:0 -4px 20px rgba(0,0,0,.25)}
+.mat-close{float:right;background:none;border:none;font-size:1.3rem;cursor:pointer;color:var(--ink-soft);line-height:1}
+.species-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 14px}
+.mf-indicator{display:flex;align-items:center;gap:8px;border-radius:12px;padding:9px 12px;margin-top:8px;font-size:.85rem;line-height:1.3}
+.mf-on{background:var(--green-light);color:var(--green-dark);border:1px solid var(--green)}
+.mf-off{background:#efe8d5;color:var(--ink-soft);border:1px solid var(--line)}
+#homeMap{height:200px;border-radius:10px;border:1px solid var(--line);margin-top:8px;z-index:1}
 </style>
 </head>
 <body>
@@ -234,6 +243,10 @@ textarea{resize:vertical;min-height:64px}
     <button class="btn btn-secondary" onclick="pinpointMe()">📍 <span data-i18n="useMyLocation"></span></button>
     <div id="locStatus" data-i18n="locHint"></div>
     <div id="miniMap"></div>
+    <div id="mfRow" style="display:none">
+      <label class="pub-row" style="margin-top:10px"><input type="checkbox" id="mfToggle" onchange="mfToggleChanged(this.checked)"> <span data-i18n="matrikelfuglOpt"></span></label>
+      <div id="mfIndicator"></div>
+    </div>
     <label class="fld" data-i18n="notes"></label>
     <textarea id="logNotes"></textarea>
     <label class="pub-row"><input type="checkbox" id="logPublic" checked> <span data-i18n="sharePublic"></span></label>
@@ -274,6 +287,17 @@ textarea{resize:vertical;min-height:64px}
       <div class="note" data-i18n="cloudNote"></div>
     </div>
     <div class="card">
+      <label class="fld" style="margin-top:0" data-i18n="homeMatrikel"></label>
+      <div id="homeMatLabel" class="sub" style="margin:2px 0 6px"></div>
+      <div id="homeMap"></div>
+      <div class="photo-row" style="flex-wrap:wrap">
+        <button class="btn btn-secondary" onclick="homeUseLocation()">📍 <span data-i18n="useMyLocation"></span></button>
+        <button class="btn btn-secondary" onclick="saveHomeMatrikel()" data-i18n="saveHome"></button>
+        <button class="btn btn-secondary" onclick="clearHomeMatrikel()" data-i18n="clearHome"></button>
+      </div>
+      <div class="note" data-i18n="homeNote"></div>
+    </div>
+    <div class="card">
       <label class="fld" style="margin-top:0" data-i18n="dfToken"></label>
       <input type="text" id="dfToken" placeholder="Dataforsyningen token">
       <button class="btn btn-secondary" style="margin-top:10px" onclick="saveToken()" data-i18n="saveToken"></button>
@@ -300,6 +324,7 @@ textarea{resize:vertical;min-height:64px}
 </div>
 
 <div id="lightbox" onclick="closeLightbox()"><img id="lightboxImg" alt=""></div>
+<div id="matModal" onclick="closeMatrikelDetail()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeMatrikelDetail()">✕</button><div id="matDetailContent"></div></div></div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -561,6 +586,8 @@ const I18N = {
   map:'Map', mapSub:'Your sightings and shared sightings from other watchers.',
   cadastral:'Cadastral parcels', community:'Community', myLocation:'My location',
   matrikelLayer:'Sightings by parcel', matrikelWord:'Parcel', matSightings:'sightings', matSpecies:'species', matContributors:'contributors',
+  matrikelfuglOpt:'Log as a property bird (matrikelfugl)', mfChip:'Property bird', mfOn:'On your property — will be logged as a property bird', mfOff:'Off your property — logged as a regular sighting',
+  homeMatrikel:'Home matrikel (your property)', homeNone:'No home matrikel set.', saveHome:'Save', clearHome:'Clear', homeNotFound:'No parcel found at that point.', homeNote:'Place the pin on your property and save. New sightings then default to “matrikelfugl”, dropping the pin here — drag it away if the sighting was elsewhere.',
   mySightings:'My sightings', otherSightings:'Other watchers',
   newSighting:'New sighting', logSub:'Record a bird observed on your property.',
   species:'Species', when:'When', where:'Where',
@@ -600,6 +627,8 @@ const I18N = {
   map:'Kort', mapSub:'Dine observationer og delte observationer fra andre fuglekiggere.',
   cadastral:'Matrikelkort', community:'Fællesskab', myLocation:'Min placering',
   matrikelLayer:'Observationer pr. matrikel', matrikelWord:'Matrikel', matSightings:'observationer', matSpecies:'arter', matContributors:'bidragydere',
+  matrikelfuglOpt:'Log som matrikelfugl', mfChip:'Matrikelfugl', mfOn:'På din matrikel — logges som matrikelfugl', mfOff:'Uden for din matrikel — logges som almindelig observation',
+  homeMatrikel:'Hjemmematrikel (din grund)', homeNone:'Ingen hjemmematrikel valgt.', saveHome:'Gem', clearHome:'Ryd', homeNotFound:'Ingen matrikel fundet på det punkt.', homeNote:'Placér nålen på din grund og gem. Nye observationer sættes så som standard til “matrikelfugl” og placerer nålen her — træk den væk, hvis observationen var et andet sted.',
   mySightings:'Mine observationer', otherSightings:'Andre fuglekiggere',
   newSighting:'Ny observation', logSub:'Registrér en fugl set på din grund.',
   species:'Art', when:'Hvornår', where:'Hvor',
@@ -645,6 +674,7 @@ function applyLang(){
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   setAuthMode(authMode);
   renderNav(); renderTimeline(); renderGuide(); renderBadges(); renderSpeciesGrid(); updateStats();
+  updateHomeUI(); updateMfUI();
   if (map) refreshMapMarkers();
 }
 function toggleLang(){ lang = lang === 'en' ? 'da' : 'en'; store.set('lang', lang); applyLang(); }
@@ -710,11 +740,12 @@ async function loadCloudData(){
     sightings = sRes.data || [];
     unlockedBadges = {};
     (bRes.data || []).forEach(r => unlockedBadges[r.badge_id] = r.unlocked_at);
-    if (pRes.data) profileName = pRes.data.display_name || '';
+    if (pRes.data){ profileName = pRes.data.display_name || '';
+      homeMatrikel = pRes.data.home_matrikel_id ? {id:pRes.data.home_matrikel_id, label:pRes.data.home_matrikel_label, geojson:pRes.data.home_matrikel_geojson} : null; }
     else await db.from('profiles').insert({ id: user.id, display_name: '' });
     renderTimeline(); renderBadges(); renderGuide(); updateStats();
     loadCommunity();
-    backfillMatrikel();
+    backfillMatrikel().then(() => reconcileMatrikelfugl());
   } catch(e){ toast(t('loadErr')); }
 }
 async function loadCommunity(){
@@ -753,6 +784,155 @@ async function backfillMatrikel(){
     if (!error){ s.matrikel_id=m.id; s.matrikel_label=m.label; s.matrikel_geojson=m.geojson; changed=true; }
   }
   if (changed){ renderTimeline(); refreshMapMarkers(); }
+}
+
+/* ===== home matrikel + matrikelfugl ===== */
+var homeMatrikel = null, matrikelfuglActive = false, homeMap = null, homeMarker = null, homeMiniLayer = null;
+function pointInRing(x, y, ring){
+  let inside = false;
+  for (let i=0, j=ring.length-1; i<ring.length; j=i++){
+    const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+    if (((yi>y)!==(yj>y)) && (x < (xj-xi)*(y-yi)/(yj-yi)+xi)) inside = !inside;
+  }
+  return inside;
+}
+function pointInPolygonCoords(x, y, polys){
+  if (!polys.length || !pointInRing(x,y,polys[0])) return false;
+  for (let k=1;k<polys.length;k++){ if (pointInRing(x,y,polys[k])) return false; }
+  return true;
+}
+function pointInGeometry(lng, lat, geom){
+  if (!geom) return false;
+  if (geom.type==='Polygon') return pointInPolygonCoords(lng,lat,geom.coordinates);
+  if (geom.type==='MultiPolygon') return geom.coordinates.some(pc=>pointInPolygonCoords(lng,lat,pc));
+  return false;
+}
+function geomCentroid(geom){
+  let ring;
+  if (geom.type==='Polygon') ring=geom.coordinates[0];
+  else if (geom.type==='MultiPolygon') ring=geom.coordinates[0][0];
+  else return null;
+  let x=0,y=0; for (const p of ring){ x+=p[0]; y+=p[1]; }
+  return {lng:x/ring.length, lat:y/ring.length};
+}
+function homeGeo(){ try { return JSON.parse(homeMatrikel.geojson); } catch(e){ return null; } }
+function homeCenter(){ const g=homeGeo(); return g?geomCentroid(g):null; }
+function setupMatrikelfugl(){
+  const row=document.getElementById('mfRow'); if(!row) return;
+  if(!homeMatrikel){ row.style.display='none'; matrikelfuglActive=false; return; }
+  row.style.display='';
+  drawHomeOnMini();
+  if(!logLatLng) snapToHome(); else onUserMovedPin();
+}
+function snapToHome(){
+  if(!homeMatrikel) return;
+  const c=homeCenter(); if(!c) return;
+  placeMiniMarker(c.lat, c.lng, true);
+  matrikelfuglActive=true; updateMfUI();
+}
+function onUserMovedPin(){
+  if(homeMatrikel && logLatLng){ const g=homeGeo(); matrikelfuglActive = g ? pointInGeometry(logLatLng.lng, logLatLng.lat, g) : false; }
+  else matrikelfuglActive=false;
+  updateMfUI();
+}
+function mfToggleChanged(on){ if(on) snapToHome(); else { matrikelfuglActive=false; updateMfUI(); } }
+function updateMfUI(){
+  const cb=document.getElementById('mfToggle'), ind=document.getElementById('mfIndicator');
+  if(!cb||!ind) return;
+  if(!homeMatrikel){ ind.className=''; ind.innerHTML=''; return; }
+  cb.checked=matrikelfuglActive;
+  ind.className='mf-indicator '+(matrikelfuglActive?'mf-on':'mf-off');
+  ind.innerHTML=(matrikelfuglActive?'🏡 ':'📍 ')+(matrikelfuglActive?t('mfOn'):t('mfOff'));
+}
+function drawHomeOnMini(){
+  if(!miniMap||!homeMatrikel) return;
+  if(homeMiniLayer){ miniMap.removeLayer(homeMiniLayer); homeMiniLayer=null; }
+  const g=homeGeo(); if(!g) return;
+  homeMiniLayer=L.geoJSON(g,{style:{color:'#2d5a3d',weight:2,fillColor:'#3f7a52',fillOpacity:.15,dashArray:'4'},interactive:false}).addTo(miniMap);
+}
+function initHomeMap(){
+  setTimeout(()=>{
+    if(!homeMap){
+      homeMap=L.map('homeMap').setView([56.0,10.5],6);
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{maxZoom:19,subdomains:'abcd',attribution:'© OpenStreetMap · © CARTO'}).addTo(homeMap);
+      homeMap.on('click', e=> setHomeMarker(e.latlng.lat, e.latlng.lng));
+    }
+    homeMap.invalidateSize();
+    if(homeMatrikel){ const c=homeCenter(); if(c){ setHomeMarker(c.lat,c.lng); homeMap.setView([c.lat,c.lng],17); } }
+  },60);
+}
+function setHomeMarker(lat,lng){
+  if(homeMarker) homeMarker.setLatLng([lat,lng]);
+  else homeMarker=L.marker([lat,lng],{draggable:true}).addTo(homeMap);
+  homeMap.__lat=lat; homeMap.__lng=lng;
+  homeMarker.off('dragend'); homeMarker.on('dragend',()=>{ const p=homeMarker.getLatLng(); homeMap.__lat=p.lat; homeMap.__lng=p.lng; });
+}
+function homeUseLocation(){
+  if(!navigator.geolocation) return;
+  navigator.geolocation.getCurrentPosition(
+    p=>{ setHomeMarker(p.coords.latitude,p.coords.longitude); homeMap.setView([p.coords.latitude,p.coords.longitude],17); },
+    ()=>toast(t('locErr')), {enableHighAccuracy:true,timeout:10000});
+}
+async function saveHomeMatrikel(){
+  if(!homeMap || homeMap.__lat==null){ toast(t('locErr')); return; }
+  toast(t('saving'));
+  const m=await reverseMatrikel(homeMap.__lat, homeMap.__lng);
+  if(!m){ toast(t('homeNotFound')); return; }
+  homeMatrikel={id:m.id,label:m.label,geojson:m.geojson};
+  await db.from('profiles').update({home_matrikel_id:m.id,home_matrikel_label:m.label,home_matrikel_geojson:m.geojson}).eq('id',user.id);
+  updateHomeUI(); drawHomeOnMini(); reconcileMatrikelfugl(); toast('✓');
+}
+async function clearHomeMatrikel(){
+  homeMatrikel=null; matrikelfuglActive=false;
+  await db.from('profiles').update({home_matrikel_id:null,home_matrikel_label:null,home_matrikel_geojson:null}).eq('id',user.id);
+  updateHomeUI(); const row=document.getElementById('mfRow'); if(row) row.style.display='none'; reconcileMatrikelfugl(); toast('✓');
+}
+function updateHomeUI(){
+  const el=document.getElementById('homeMatLabel');
+  if(el) el.textContent = homeMatrikel ? (t('matrikelWord')+' '+homeMatrikel.label) : t('homeNone');
+}
+/* ===== matrikel detail sheet ===== */
+function openMatrikelDetail(id){
+  const rows=[];
+  sightings.forEach(s=>{ if(s.matrikel_id===id) rows.push(Object.assign({}, s, {user_id:s.user_id||user.id})); });
+  communityRows.forEach(c=>{ if(c.matrikel_id===id) rows.push(c); });
+  if(!rows.length) return;
+  rows.sort((a,b)=> (b.seen_at||'').localeCompare(a.seen_at||''));
+  const label=rows[0].matrikel_label||id;
+  const species=new Set(rows.map(r=>r.bird_id));
+  const users=new Set(rows.map(r=>r.user_id).filter(Boolean));
+  const chips=[...species].map(sp=>{ const b=birdById(sp); return b?`<span class="chip">${b.name[lang]}</span>`:''; }).join('');
+  const items=rows.map(r=>{
+    const b=birdById(r.bird_id); if(!b) return '';
+    const who=r.user_id===user.id ? t('you') : t('otherUser');
+    return `<div class="card tl-item">${avatarHTML(b)}<div style="flex:1;min-width:0">
+      <div class="tl-date">${fmtDate(r.seen_at)} · ${who}</div>
+      <div class="tl-name">${b.name[lang]}</div><div class="tl-latin">${b.latin}</div>
+      ${photoThumbHTML(r.photo_path, b.name[lang], 'tl-photo')}</div></div>`;
+  }).join('');
+  document.getElementById('matDetailContent').innerHTML=
+    `<div class="popup-bird" style="font-size:1.15rem">${t('matrikelWord')} ${label}</div>
+     <div class="sub">${rows.length} ${t('matSightings')} · ${species.size} ${t('matSpecies')} · ${users.size} ${t('matContributors')}</div>
+     <div class="species-chips">${chips}</div>${items}`;
+  document.getElementById('matModal').classList.add('show');
+}
+function closeMatrikelDetail(){ document.getElementById('matModal').classList.remove('show'); }
+/* retroactively flag the user's own sightings as matrikelfugl when their matrikel == home (diff-only writes) */
+async function reconcileMatrikelfugl(){
+  if(!user) return;
+  const toTrue=[], toFalse=[];
+  sightings.forEach(s=>{
+    const should = !!(homeMatrikel && s.matrikel_id && s.matrikel_id===homeMatrikel.id);
+    if(should && !s.is_matrikelfugl) toTrue.push(s);
+    else if(!should && s.is_matrikelfugl) toFalse.push(s);
+  });
+  if(!toTrue.length && !toFalse.length) return;
+  try {
+    if(toTrue.length) await db.from('sightings').update({is_matrikelfugl:true}).in('id', toTrue.map(s=>s.id));
+    if(toFalse.length) await db.from('sightings').update({is_matrikelfugl:false}).in('id', toFalse.map(s=>s.id));
+    toTrue.forEach(s=>s.is_matrikelfugl=true); toFalse.forEach(s=>s.is_matrikelfugl=false);
+    renderTimeline(); refreshMapMarkers();
+  } catch(e){}
 }
 function photoUrl(path){
   return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null;
@@ -817,10 +997,10 @@ function showView(v){
   document.querySelectorAll('.view').forEach(s => s.classList.toggle('active', s.id === 'view-'+v));
   renderNav();
   if (v === 'map') initMap();
-  if (v === 'log') { initMiniMap(); if(!document.getElementById('logWhen').value) setNow(); }
+  if (v === 'log') { initMiniMap(); if(!document.getElementById('logWhen').value) setNow(); setupMatrikelfugl(); }
   if (v === 'badges') renderBadges();
   if (v === 'timeline') renderTimeline();
-  if (v === 'profile') updateStats();
+  if (v === 'profile'){ updateStats(); initHomeMap(); updateHomeUI(); }
   window.scrollTo(0,0);
 }
 
@@ -850,6 +1030,7 @@ function renderTimeline(){
         <div class="tl-meta">
           <span class="chip">📍 ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
           ${s.matrikel_label ? `<span class="chip">🏠 ${escapeHtml(s.matrikel_label)}</span>` : ''}
+          ${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
         </div>
       </div>
@@ -892,7 +1073,7 @@ function initMiniMap(){
       miniMap = L.map('miniMap').setView([56.0, 10.5], 6);
       L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
         {maxZoom:19, subdomains:'abcd', attribution:'© OpenStreetMap · © CARTO'}).addTo(miniMap);
-      miniMap.on('click', e => placeMiniMarker(e.latlng.lat, e.latlng.lng));
+      miniMap.on('click', e => { placeMiniMarker(e.latlng.lat, e.latlng.lng); onUserMovedPin(); });
     }
     miniMap.invalidateSize();
   }, 60);
@@ -902,7 +1083,7 @@ function placeMiniMarker(lat, lng, zoomTo){
   if (miniMarker) miniMarker.setLatLng([lat,lng]);
   else {
     miniMarker = L.marker([lat,lng], {draggable:true}).addTo(miniMap);
-    miniMarker.on('dragend', () => { const p = miniMarker.getLatLng(); logLatLng = {lat:p.lat, lng:p.lng}; });
+    miniMarker.on('dragend', () => { const p = miniMarker.getLatLng(); logLatLng = {lat:p.lat, lng:p.lng}; onUserMovedPin(); });
   }
   if (zoomTo) miniMap.setView([lat,lng], 17);
 }
@@ -911,7 +1092,7 @@ function pinpointMe(){
   st.textContent = t('locating');
   if (!navigator.geolocation){ st.textContent = t('locErr'); return; }
   navigator.geolocation.getCurrentPosition(
-    p => { placeMiniMarker(p.coords.latitude, p.coords.longitude, true); st.textContent = t('locOk'); },
+    p => { placeMiniMarker(p.coords.latitude, p.coords.longitude, true); st.textContent = t('locOk'); onUserMovedPin(); },
     () => { st.textContent = t('locErr'); }, {enableHighAccuracy:true, timeout:10000});
 }
 let logPhotoOriginal = null;
@@ -1029,11 +1210,13 @@ async function saveSighting(){
         if (upd.data) saved = upd.data;
       }
     }
-    const mat = await reverseMatrikel(saved.lat, saved.lng);
-    if (mat){
-      const um = await db.from('sightings')
-        .update({matrikel_id:mat.id, matrikel_label:mat.label, matrikel_geojson:mat.geojson})
-        .eq('id', saved.id).select().single();
+    let mat = await reverseMatrikel(saved.lat, saved.lng);
+    const mf = !!(matrikelfuglActive && homeMatrikel);
+    if (mf) mat = { id: homeMatrikel.id, label: homeMatrikel.label, geojson: homeMatrikel.geojson };
+    if (mat || mf){
+      const upd = mat ? {matrikel_id:mat.id, matrikel_label:mat.label, matrikel_geojson:mat.geojson, is_matrikelfugl:mf} : {is_matrikelfugl:mf};
+      let um = await db.from('sightings').update(upd).eq('id', saved.id).select().single();
+      if (um.error && ('is_matrikelfugl' in upd)){ delete upd.is_matrikelfugl; um = await db.from('sightings').update(upd).eq('id', saved.id).select().single(); }
       if (um.data) saved = um.data;
     }
     sightings.unshift(saved);
@@ -1232,8 +1415,7 @@ function renderMatrikelLayer(){
     const g = agg[id]; if (!g.geo) return;
     L.geoJSON(g.geo, {style:{color:'#2d5a3d', weight:2, fillColor:'#3f7a52', fillOpacity:.22}})
       .addTo(matrikelLayer)
-      .bindPopup(`<div class="popup-bird">${t('matrikelWord')} ${g.label}</div>
-        <div class="popup-sub">${g.total} ${t('matSightings')} · ${g.species.size} ${t('matSpecies')} · ${g.users.size} ${t('matContributors')}</div>`);
+      .on('click', () => openMatrikelDetail(id));
   });
 }
 function toggleCadastral(e){
