@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Bask</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <style>
 :root{
@@ -15,6 +17,31 @@
   --terracotta:#c2683f; --gold:#c9a227; --card:#fffdf7; --line:#ddd5bf;
   --radius:14px; --shadow:0 2px 8px rgba(43,43,35,.10);
 }
+body.dark{
+  --green-dark:#6ab080; --green:#4f8c63; --green-light:#2c3b2e;
+  --cream:#1b1d17; --cream-dark:#262820; --ink:#e9e5d6; --ink-soft:#9d9a86;
+  --gold:#cfa93a; --card:#23251d; --line:#3a3d30;
+}
+body.dark header{background:#f4efe3;border-bottom-color:#e0d9c6}
+body.dark input[type=text],body.dark input[type=email],body.dark input[type=password],body.dark input[type=datetime-local],body.dark select,body.dark textarea{background:#2b2e24;color:var(--ink);border-color:var(--line)}
+body.dark #authView{background:#1b1d17}
+body.dark .auth-logo-wrap{background:#f4efe3;border-radius:18px;padding:10px 6px;max-width:340px;margin:44px auto 24px}
+#onboardModal{position:fixed;inset:0;background:rgba(20,22,16,.55);z-index:3600;display:none;align-items:center;justify-content:center;padding:18px}
+#onboardModal.show{display:flex}
+.onboard-card{background:var(--cream);border-radius:18px;max-width:400px;width:100%;padding:26px 22px 20px;box-shadow:var(--shadow);text-align:center}
+.onboard-card h3{color:var(--green-dark);font-size:1.3rem;margin-bottom:10px}
+.onboard-card p{color:var(--ink);font-size:.95rem;line-height:1.5}
+.onboard-emoji{font-size:2.4rem;margin-bottom:6px}
+.onboard-dots{display:flex;gap:6px;justify-content:center;margin:16px 0}
+.onboard-dot{width:8px;height:8px;border-radius:50%;background:var(--line)}
+.onboard-dot.on{background:var(--green)}
+.onboard-nav{display:flex;gap:10px;margin-top:14px}
+.onboard-nav .btn{flex:1;margin-top:0}
+#audioModal{position:fixed;inset:0;background:rgba(25,28,20,.93);z-index:3450;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px}
+#audioModal.show{display:flex}
+.audio-sheet{width:100%;max-width:600px;color:#f7f3e8;text-align:center}
+.audio-timer{font-size:2rem;color:#f7f3e8;margin:10px 0 16px;font-variant-numeric:tabular-nums}
+#waveCanvas{width:100%;height:120px;border-radius:10px;background:#26271f;display:block;touch-action:none;margin-bottom:10px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:Georgia,'Times New Roman',serif;background:var(--cream);color:var(--ink);
@@ -222,8 +249,11 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
 <main>
   <section class="view active" id="view-observations">
     <h2 data-i18n="newObservation"></h2>
-    <div class="photo-row" style="margin-top:8px;margin-bottom:14px">
+    <div class="photo-row" style="margin-top:8px">
       <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="startCameraSighting()">📷 <span data-i18n="takePhoto"></span></button>
+      <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="startAudioSighting()">🎤 <span data-i18n="recordSound"></span></button>
+    </div>
+    <div class="photo-row" style="margin-top:8px;margin-bottom:14px">
       <button class="btn btn-secondary" style="flex:1" onclick="startManualSighting()">✏️ <span data-i18n="addManually"></span></button>
     </div>
     <h2 data-i18n="feed" style="margin-top:20px"></h2>
@@ -259,6 +289,13 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
     <img id="photoPreview" alt="">
     <button class="btn btn-secondary" id="cropBtn" style="display:none;margin-top:8px" onclick="openCrop()">✂️ <span data-i18n="cropBtn"></span></button>
     <button class="btn btn-secondary" id="removePhotoBtn" style="display:none;margin-top:8px" onclick="removePhoto()" data-i18n="removePhoto"></button>
+    <div class="photo-row" style="margin-top:8px">
+      <button class="btn btn-secondary" style="flex:1" onclick="openAudio()">🎤 <span data-i18n="recordSound"></span></button>
+    </div>
+    <div id="audioRow" style="display:none;margin-top:8px">
+      <audio id="audioPreview" controls style="width:100%"></audio>
+      <button class="btn btn-secondary" id="removeAudioBtn" style="width:100%;margin-top:6px" onclick="removeAudio()" data-i18n="removeAudio"></button>
+    </div>
     <label class="fld" data-i18n="species"></label>
     <input type="text" id="speciesSearch" data-i18n-ph="searchSpecies" style="margin-bottom:8px" oninput="speciesFilter=this.value.trim();renderSpeciesGrid()">
     <div class="species-grid" id="speciesGrid"></div>
@@ -274,6 +311,15 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
     <div id="miniMap"></div>
     <label class="fld" data-i18n="notes"></label>
     <textarea id="logNotes"></textarea>
+    <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap">
+      <label class="fld" style="margin:0" data-i18n="sexLabel"></label>
+      <select id="logSex" style="width:auto;flex:1;min-width:130px">
+        <option value="" data-i18n="sexUnknown"></option>
+        <option value="male" data-i18n="male"></option>
+        <option value="female" data-i18n="female"></option>
+      </select>
+    </div>
+    <label class="pub-row" style="margin-top:10px"><input type="checkbox" id="logHeard"> <span data-i18n="heardOnly"></span></label>
     <label class="pub-row"><input type="checkbox" id="logPublic" checked> <span data-i18n="sharePublic"></span></label>
     <button class="btn btn-primary" id="saveBtn" onclick="saveSighting()" data-i18n="save"></button>
     <button class="btn btn-secondary" id="cancelEdit" style="width:100%;margin-top:8px" onclick="cancelEditMode()" data-i18n="cancel"></button>
@@ -330,6 +376,9 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
       <button class="btn btn-secondary" style="margin-top:10px" onclick="saveToken()" data-i18n="saveToken"></button>
       <div class="note" data-i18n="tokenNote"></div>
     </div>
+    <div class="card">
+      <label class="pub-row" style="margin-top:0"><input type="checkbox" id="darkToggle" onchange="toggleDark(this.checked)"> <span data-i18n="darkMode"></span></label>
+    </div>
     <button class="btn btn-secondary" style="width:100%;margin-top:6px" onclick="logOut()" data-i18n="logOut"></button>
   </section>
 
@@ -372,6 +421,16 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
 </div>
 <div id="successModal" onclick="closeSuccess()"><div id="successContent" onclick="event.stopPropagation()"></div></div>
 <div id="friendModal" onclick="closeFriend()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeFriend()">✕</button><div id="friendContent"></div></div></div>
+<div id="onboardModal"><div class="onboard-card"><div id="onboardBody"></div><div class="onboard-nav"><button class="btn btn-secondary" onclick="onboardSkip()" data-i18n="skip"></button><button class="btn btn-primary" style="margin-top:0" onclick="onboardNext()" id="onboardNextBtn"></button></div></div></div>
+<div id="audioModal"><div class="audio-sheet">
+  <div id="audioStep1"><div class="audio-timer" id="audioTimer">0:00</div><button class="btn btn-primary" id="recBtn" onclick="toggleRecord()" style="margin-top:0"></button></div>
+  <div id="audioStep2" style="display:none">
+    <canvas id="waveCanvas" width="600" height="120"></canvas>
+    <div class="crop-hint" data-i18n="audioTrimHint"></div>
+    <div class="crop-btns"><button class="btn btn-secondary" onclick="playTrim()" data-i18n="play"></button><button class="btn btn-secondary" onclick="reRecord()" data-i18n="reRecord"></button></div>
+  </div>
+  <div class="crop-btns"><button class="btn btn-secondary" onclick="closeAudio()" data-i18n="cropCancel"></button><button class="btn btn-primary" id="audioUseBtn" onclick="useAudio()" style="display:none;margin-top:0" data-i18n="useAudio"></button></div>
+</div></div>
 <div id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
@@ -649,8 +708,8 @@ const I18N = {
   useMyLocation:'My location', locHint:'Tap the button, then fine-tune by dragging the pin.',
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
-  save:'Save sighting', observations:'Observations', newObservation:'New observation', feed:'Feed', addManually:'Add manually', cancel:'Cancel', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
-  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo',
+  save:'Save sighting', observations:'Observations', newObservation:'New observation', feed:'Feed', addManually:'Add manually', cancel:'Cancel', skip:'Skip', next:'Next', getStarted:'Get started', darkMode:'Dark mode', sexLabel:'Sex', sexUnknown:'Unknown', male:'♂ Male', female:'♀ Female', heardOnly:'Heard only (not seen)', heard:'Heard', onbTitle1:'Welcome to Bask', onbBody1:'Log the birds on your property. Add a sighting with a photo, a sound recording, or manually — everything appears in your Feed.', onbTitle2:'Matrikelfugl', onbBody2:'Set your home matrikel under Profile. Sightings on your property are automatically marked as “matrikelfugl” (property birds).', onbTitle3:'Friends', onbBody3:'Find other watchers under People and send a friend request. Once accepted, you can see each other’s sightings in your Feed.', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
+  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo', recordSound:'Record sound', startRec:'Start recording', stopRec:'Stop', reRecord:'Re-record', play:'Play', useAudio:'Use sound', audioTrimHint:'Drag the gold handles to trim to the bird’s call.', removeAudio:'Remove sound', audioAdded:'Sound added ✓', micErr:'Could not access microphone.',
   people:'People', peopleSub:'Find watchers and send friend requests to view their sightings.', searchName:'Search by name…', addFriend:'Add friend', removeFriend:'Remove', friendsList:'Your friends', noFriends:'No friends yet — search by name above.', noResults:'No users found.', publicOnly:'public only', noPublic:'No sightings yet.', propertyBirds:'property birds', requests:'Friend requests', accept:'Accept', decline:'Decline', viewProfile:'View', requestPending:'Request sent', requestSent:'Friend request sent', nowFriends:'You are now friends',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
   milestoneBadges:'Milestones', speciesBadges:'Species badges',
@@ -692,8 +751,8 @@ const I18N = {
   useMyLocation:'Min lokation', locHint:'Tryk på knappen og finjustér ved at trække i nålen.',
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
-  save:'Gem observation', observations:'Observationer', newObservation:'Ny observation', feed:'Feed', addManually:'Tilføj manuelt', cancel:'Annullér', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
-  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto',
+  save:'Gem observation', observations:'Observationer', newObservation:'Ny observation', feed:'Feed', addManually:'Tilføj manuelt', cancel:'Annullér', skip:'Spring over', next:'Næste', getStarted:'Kom i gang', darkMode:'Mørk tilstand', sexLabel:'Køn', sexUnknown:'Ukendt', male:'♂ Han', female:'♀ Hun', heardOnly:'Kun hørt (ikke set)', heard:'Hørt', onbTitle1:'Velkommen til Bask', onbBody1:'Registrér fuglene på din grund. Tilføj en observation med foto, lydoptagelse eller manuelt — alt vises i dit Feed.', onbTitle2:'Matrikelfugl', onbBody2:'Vælg din hjemmematrikel under Profil. Observationer på din grund markeres automatisk som “matrikelfugl”.', onbTitle3:'Venner', onbBody3:'Find andre fuglekiggere under Personer og send en venneanmodning. Når den accepteres, kan I se hinandens observationer i dit Feed.', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
+  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto', recordSound:'Optag lyd', startRec:'Start optagelse', stopRec:'Stop', reRecord:'Optag igen', play:'Afspil', useAudio:'Brug lyd', audioTrimHint:'Træk i de gyldne håndtag for at beskære til fuglens kald.', removeAudio:'Fjern lyd', audioAdded:'Lyd tilføjet ✓', micErr:'Kunne ikke få adgang til mikrofon.',
   people:'Personer', peopleSub:'Find fuglekiggere og send venneanmodninger for at se deres observationer.', searchName:'Søg efter navn…', addFriend:'Tilføj ven', removeFriend:'Fjern', friendsList:'Dine venner', noFriends:'Ingen venner endnu — søg efter navn ovenfor.', noResults:'Ingen brugere fundet.', publicOnly:'kun offentlige', noPublic:'Ingen observationer endnu.', propertyBirds:'matrikelfugle', requests:'Venneanmodninger', accept:'Acceptér', decline:'Afvis', viewProfile:'Se', requestPending:'Anmodning sendt', requestSent:'Venneanmodning sendt', nowFriends:'I er nu venner',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
   milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
@@ -811,6 +870,7 @@ async function loadCloudData(){
     checkBadges(); reconcileIcons();
     loadCommunity();
     loadFriendData();
+    maybeOnboard();
     backfillMatrikel().then(() => reconcileMatrikelfugl());
   } catch(e){ toast(t('loadErr')); }
 }
@@ -1099,7 +1159,7 @@ async function loadFeed(){
   const fids = (typeof friendIds==='function') ? friendIds() : [];
   if(!user || !fids.length){ friendSightings=[]; renderTimeline(); return; }
   const { data } = await db.from('sightings')
-    .select('id,user_id,bird_id,seen_at,lat,lng,notes,photo_path,is_matrikelfugl,is_public')
+    .select('id,user_id,bird_id,seen_at,lat,lng,notes,photo_path,is_matrikelfugl,is_public,sex,heard_only,weather')
     .in('user_id', fids).order('seen_at',{ascending:false}).limit(300);
   friendSightings = data || [];
   await loadNames(fids);
@@ -1302,9 +1362,10 @@ function renderTimeline(){
           ${s.matrikel_label ? `<span class="chip">🏠 ${escapeHtml(s.matrikel_label)}</span>` : ''}
           ${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
+          ${extraChips(s)}
           ${s.photo_path ? `<button class="del-btn" style="color:var(--green-dark);text-decoration:none" onclick="iconFromSighting('${s.id}')">🖼️ ${t('setIcon')}</button>` : ''}
         </div>`
-      : `<div class="tl-meta">${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}</div>`;
+      : `<div class="tl-meta">${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}${extraChips(s)}</div>`;
     return `<div class="card tl-item">
       <div class="tl-left">${avatar}${actions}</div>
       <div style="flex:1;min-width:0">
@@ -1316,6 +1377,7 @@ function renderTimeline(){
         <div class="tl-latin">${b.latin}</div>
         ${s.notes ? `<div class="tl-note">${escapeHtml(s.notes)}</div>` : ''}
         ${photoThumbHTML(s.photo_path, b.name[lang], 'tl-photo')}
+        ${s.audio_path ? `<audio controls preload="none" src="${audioUrl(s.audio_path)}" style="width:100%;margin-top:8px"></audio>` : ''}
         ${meta}
       </div>
     </div>`;
@@ -1335,6 +1397,8 @@ async function deleteSighting(id){
 /* ============ log form ============ */
 let selectedBird = null, logLatLng = null, logPhoto = null;
 let editingId = null, editPhotoPath = null, removePhotoFlag = false, cameraFlowPending = false;
+let logAudio = null, editAudioPath = null, removeAudioFlag = false, audioFlowPending = false;
+var mediaRecorder=null, audioChunks=[], recordedBlob=null, recStartTime=0, recTimer=null, audioCtx=null, decodedBuffer=null, trimStart=0, trimEnd=1, previewSource=null, audioDrag=false;
 let miniMap = null, miniMarker = null;
 let speciesFilter = '';
 function foldText(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a'); }
@@ -1519,6 +1583,14 @@ async function saveSighting(){
       const upd = await db.from('sightings').update({photo_path: null}).eq('id', saved.id).select().single();
       if (upd.data) saved = upd.data;
     }
+    if (logAudio){
+      const apath = `${user.id}/audio_${saved.id}.wav`;
+      const aup = await db.storage.from('photos').upload(apath, logAudio, {contentType:'audio/wav', upsert:true});
+      if (!aup.error){ const uu = await db.from('sightings').update({audio_path:apath}).eq('id', saved.id).select().single(); if (uu.data) saved = uu.data; }
+    } else if (isEdit && removeAudioFlag && editAudioPath){
+      try{ await db.storage.from('photos').remove([editAudioPath]); }catch(e){}
+      const uu = await db.from('sightings').update({audio_path:null}).eq('id', saved.id).select().single(); if (uu.data) saved = uu.data;
+    }
     let mat = await reverseMatrikel(saved.lat, saved.lng);
     const mf = !!(matrikelfuglActive && homeMatrikel);
     if (mf) mat = { id: homeMatrikel.id, label: homeMatrikel.label, geojson: homeMatrikel.geojson };
@@ -1528,6 +1600,12 @@ async function saveSighting(){
       let um = await db.from('sightings').update(upd).eq('id', saved.id).select().single();
       if (um.error && ('is_matrikelfugl' in upd)){ delete upd.is_matrikelfugl; um = await db.from('sightings').update(upd).eq('id', saved.id).select().single(); }
       if (um.data) saved = um.data;
+    }
+    {
+      const extra = { sex: (document.getElementById('logSex').value || null), heard_only: document.getElementById('logHeard').checked };
+      if (!isEdit){ const wx = await fetchWeather(saved.lat, saved.lng); if (wx) extra.weather = wx; }
+      const ue = await db.from('sightings').update(extra).eq('id', saved.id).select().single();
+      if (ue.data) saved = ue.data;
     }
     if (isEdit){ const ix=sightings.findIndex(s=>s.id===saved.id); if(ix>=0) sightings[ix]=saved; sightings.sort((a,b)=>(b.seen_at||'').localeCompare(a.seen_at||'')); }
     else sightings.unshift(saved);
@@ -1541,6 +1619,7 @@ async function saveSighting(){
     const pv = document.getElementById('photoPreview'); pv.style.display = 'none';
     document.getElementById('cropBtn').style.display = 'none';
     document.getElementById('removePhotoBtn').style.display = 'none'; removePhotoFlag = false;
+    logAudio = null; removeAudioFlag = false; editAudioPath = null; document.getElementById('audioRow').style.display='none'; document.getElementById('audioPreview').src='';
     document.getElementById('camInput').value = ''; document.getElementById('galInput').value = '';
     document.getElementById('cancelEdit').style.display = 'none';
     renderSpeciesGrid(); setNow(); renderTimeline(); refreshMapMarkers(); updateStats();
@@ -1561,6 +1640,10 @@ function editSighting(id){
   document.getElementById('logWhen').value=d.toISOString().slice(0,16);
   document.getElementById('logNotes').value=s.notes||'';
   document.getElementById('logPublic').checked=!!s.is_public;
+  document.getElementById('logSex').value=s.sex||'';
+  document.getElementById('logHeard').checked=!!s.heard_only;
+  editAudioPath=s.audio_path||null; removeAudioFlag=false; logAudio=null;
+  if(editAudioPath){ updateAudioPreview(audioUrl(editAudioPath)); } else { document.getElementById('audioRow').style.display='none'; document.getElementById('audioPreview').src=''; }
   const pv=document.getElementById('photoPreview');
   if(editPhotoPath){ pv.src=photoUrl(editPhotoPath); pv.style.display='block'; } else { pv.src=''; pv.style.display='none'; }
   document.getElementById('cropBtn').style.display='none';
@@ -1588,6 +1671,10 @@ function resetNewSightingForm(){
   speciesFilter=''; const ss=document.getElementById('speciesSearch'); if(ss) ss.value='';
   document.getElementById('logNotes').value='';
   document.getElementById('logPublic').checked=true;
+  document.getElementById('logSex').value='';
+  document.getElementById('logHeard').checked=false;
+  logAudio=null; editAudioPath=null; removeAudioFlag=false;
+  { const ar=document.getElementById('audioRow'); if(ar) ar.style.display='none'; const ap=document.getElementById('audioPreview'); if(ap) ap.src=''; }
   const pv=document.getElementById('photoPreview'); pv.src=''; pv.style.display='none';
   document.getElementById('cropBtn').style.display='none';
   document.getElementById('removePhotoBtn').style.display='none';
@@ -1828,6 +1915,7 @@ function centerOnMe(){
 
 /* ============ profile ============ */
 function updateStats(){
+  const dt=document.getElementById('darkToggle'); if(dt) dt.checked=document.body.classList.contains('dark');
   const el = document.getElementById('statSightings'); if (!el) return;
   el.textContent = sightings.length;
   document.getElementById('statSpecies').textContent = uniqueSpeciesSeen().length;
@@ -1856,6 +1944,160 @@ function toast(msg){
 /* ============ init ============ */
 applyLang();
 setNow();
+if (store.get('dark', false)) document.body.classList.add('dark');
+if ('serviceWorker' in navigator){ window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{})); }
+function toggleDark(on){ document.body.classList.toggle('dark', !!on); store.set('dark', !!on); }
+async function fetchWeather(lat, lng){
+  try{
+    const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lng}&current=temperature_2m,weather_code,wind_speed_10m`);
+    if(!r.ok) return null;
+    const j = await r.json(); const c = j.current; if(!c) return null;
+    return { t: c.temperature_2m, c: c.weather_code, w: c.wind_speed_10m };
+  }catch(e){ return null; }
+}
+function weatherEmoji(c){
+  if(c===0) return '☀️'; if(c<=2) return '🌤️'; if(c===3) return '☁️';
+  if(c===45||c===48) return '🌫️'; if(c>=51&&c<=57) return '🌦️';
+  if(c>=61&&c<=67) return '🌧️'; if(c>=71&&c<=77) return '🌨️';
+  if(c>=80&&c<=82) return '🌧️'; if(c>=85&&c<=86) return '🌨️';
+  if(c>=95) return '⛈️'; return '🌡️';
+}
+function extraChips(s){
+  let h='';
+  if(s.weather) h += `<span class="chip">${weatherEmoji(s.weather.c)} ${Math.round(s.weather.t)}°</span>`;
+  if(s.sex) h += `<span class="chip">${s.sex==='male'?'♂':'♀'}</span>`;
+  if(s.heard_only) h += `<span class="chip pub">👂 ${t('heard')}</span>`;
+  return h;
+}
+const ONB = [ {e:'🐦',t:'onbTitle1',b:'onbBody1'}, {e:'🏡',t:'onbTitle2',b:'onbBody2'}, {e:'👥',t:'onbTitle3',b:'onbBody3'} ];
+let onboardStep = 0;
+function maybeOnboard(){ if(!store.get('onboarded', false)) startOnboarding(); }
+function startOnboarding(){ onboardStep=0; renderOnboard(); document.getElementById('onboardModal').classList.add('show'); lockScroll(true); }
+function renderOnboard(){
+  const s=ONB[onboardStep];
+  document.getElementById('onboardBody').innerHTML = `<div class="onboard-emoji">${s.e}</div><h3>${t(s.t)}</h3><p>${t(s.b)}</p><div class="onboard-dots">${ONB.map((_,i)=>`<span class="onboard-dot ${i===onboardStep?'on':''}"></span>`).join('')}</div>`;
+  document.getElementById('onboardNextBtn').textContent = onboardStep===ONB.length-1 ? t('getStarted') : t('next');
+}
+function onboardNext(){ if(onboardStep<ONB.length-1){ onboardStep++; renderOnboard(); } else onboardFinish(); }
+function onboardSkip(){ onboardFinish(); }
+function onboardFinish(){ document.getElementById('onboardModal').classList.remove('show'); lockScroll(false); store.set('onboarded', true); }
+/* ===== sound recording ===== */
+function audioUrl(path){ return path ? db.storage.from('photos').getPublicUrl(path).data.publicUrl : null; }
+function openAudio(){
+  document.getElementById('audioStep1').style.display='block';
+  document.getElementById('audioStep2').style.display='none';
+  document.getElementById('audioUseBtn').style.display='none';
+  document.getElementById('audioTimer').textContent='0:00';
+  document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
+  decodedBuffer=null; recordedBlob=null;
+  document.getElementById('audioModal').classList.add('show'); lockScroll(true);
+}
+function closeAudio(){
+  try{ if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop(); }catch(e){}
+  try{ if(previewSource) previewSource.stop(); }catch(e){}
+  clearInterval(recTimer);
+  document.getElementById('audioModal').classList.remove('show'); lockScroll(false);
+}
+async function toggleRecord(){
+  if(mediaRecorder && mediaRecorder.state==='recording'){ mediaRecorder.stop(); return; }
+  try{
+    const stream=await navigator.mediaDevices.getUserMedia({audio:true});
+    audioChunks=[];
+    mediaRecorder=new MediaRecorder(stream);
+    mediaRecorder.ondataavailable=e=>{ if(e.data && e.data.size) audioChunks.push(e.data); };
+    mediaRecorder.onstop=async ()=>{
+      stream.getTracks().forEach(tr=>tr.stop());
+      clearInterval(recTimer);
+      recordedBlob=new Blob(audioChunks, {type:(mediaRecorder && mediaRecorder.mimeType) || 'audio/webm'});
+      try{ await decodeRecorded(); }catch(e){ toast(t('micErr')); return; }
+      document.getElementById('audioStep1').style.display='none';
+      document.getElementById('audioStep2').style.display='block';
+      document.getElementById('audioUseBtn').style.display='inline-flex';
+    };
+    mediaRecorder.start();
+    recStartTime=Date.now();
+    document.getElementById('recBtn').textContent='⏹️ '+t('stopRec');
+    recTimer=setInterval(()=>{ const s=Math.floor((Date.now()-recStartTime)/1000); document.getElementById('audioTimer').textContent=Math.floor(s/60)+':'+String(s%60).padStart(2,'0'); }, 250);
+  }catch(e){ toast(t('micErr')); }
+}
+async function decodeRecorded(){
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  const ab=await recordedBlob.arrayBuffer();
+  decodedBuffer=await audioCtx.decodeAudioData(ab);
+  trimStart=0; trimEnd=1; drawWave();
+}
+function drawWave(){
+  const cv=document.getElementById('waveCanvas'); if(!cv||!decodedBuffer) return;
+  const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
+  ctx.clearRect(0,0,W,H); ctx.fillStyle='#26271f'; ctx.fillRect(0,0,W,H);
+  const data=decodedBuffer.getChannelData(0); const step=Math.max(1, Math.floor(data.length/W));
+  ctx.strokeStyle='#8fc79f'; ctx.lineWidth=1; ctx.beginPath();
+  for(let x=0;x<W;x++){ let mn=1,mx=-1; for(let j=0;j<step;j++){ const v=data[x*step+j]||0; if(v<mn)mn=v; if(v>mx)mx=v; } ctx.moveTo(x,(1-(mx+1)/2)*H); ctx.lineTo(x,(1-(mn+1)/2)*H); }
+  ctx.stroke();
+  const sx=trimStart*W, ex=trimEnd*W;
+  ctx.fillStyle='rgba(20,22,16,.6)'; ctx.fillRect(0,0,sx,H); ctx.fillRect(ex,0,W-ex,H);
+  ctx.strokeStyle='#c9a227'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,H); ctx.moveTo(ex,0); ctx.lineTo(ex,H); ctx.stroke();
+}
+function audioSetHandle(clientX){
+  const cv=document.getElementById('waveCanvas'); const rect=cv.getBoundingClientRect();
+  let f=(clientX-rect.left)/rect.width; f=Math.max(0,Math.min(1,f));
+  if(Math.abs(f-trimStart)<=Math.abs(f-trimEnd)) trimStart=Math.min(f, trimEnd-0.02); else trimEnd=Math.max(f, trimStart+0.02);
+  trimStart=Math.max(0,Math.min(trimStart,1)); trimEnd=Math.max(0,Math.min(trimEnd,1));
+  drawWave();
+}
+function playTrim(){
+  if(!decodedBuffer) return;
+  audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+  try{ if(previewSource) previewSource.stop(); }catch(e){}
+  const src=audioCtx.createBufferSource(); src.buffer=decodedBuffer; src.connect(audioCtx.destination);
+  const dur=decodedBuffer.duration; src.start(0, trimStart*dur, Math.max(0.05,(trimEnd-trimStart)*dur)); previewSource=src;
+}
+function reRecord(){
+  document.getElementById('audioStep2').style.display='none';
+  document.getElementById('audioStep1').style.display='block';
+  document.getElementById('audioUseBtn').style.display='none';
+  document.getElementById('audioTimer').textContent='0:00';
+  document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
+  decodedBuffer=null;
+}
+function useAudio(){
+  if(!decodedBuffer) return;
+  logAudio=bufferToWavTrimmed(decodedBuffer, trimStart, trimEnd);
+  removeAudioFlag=false;
+  updateAudioPreview(URL.createObjectURL(logAudio));
+  const wasFlow=audioFlowPending; audioFlowPending=false;
+  closeAudio();
+  if(wasFlow) showView('log');
+  toast(t('audioAdded'));
+}
+function updateAudioPreview(url){
+  const ar=document.getElementById('audioRow'), ap=document.getElementById('audioPreview');
+  if(ap) ap.src=url; if(ar) ar.style.display='block';
+}
+function removeAudio(){
+  logAudio=null;
+  if(editingId && editAudioPath) removeAudioFlag=true;
+  document.getElementById('audioRow').style.display='none';
+  document.getElementById('audioPreview').src='';
+}
+function bufferToWavTrimmed(buffer, s, e){
+  const sr=buffer.sampleRate; const data=buffer.getChannelData(0);
+  const startI=Math.floor(s*data.length), endI=Math.floor(e*data.length); const len=Math.max(1,endI-startI);
+  const ab=new ArrayBuffer(44+len*2); const view=new DataView(ab);
+  const ws=(o,str)=>{ for(let i=0;i<str.length;i++) view.setUint8(o+i, str.charCodeAt(i)); };
+  ws(0,'RIFF'); view.setUint32(4,36+len*2,true); ws(8,'WAVE'); ws(12,'fmt '); view.setUint32(16,16,true);
+  view.setUint16(20,1,true); view.setUint16(22,1,true); view.setUint32(24,sr,true); view.setUint32(28,sr*2,true);
+  view.setUint16(32,2,true); view.setUint16(34,16,true); ws(36,'data'); view.setUint32(40,len*2,true);
+  let o=44; for(let i=startI;i<endI;i++){ let v=Math.max(-1,Math.min(1,data[i]||0)); view.setInt16(o, v<0?v*0x8000:v*0x7fff, true); o+=2; }
+  return new Blob([ab], {type:'audio/wav'});
+}
+function startAudioSighting(){ resetNewSightingForm(); document.getElementById('logHeard').checked=true; audioFlowPending=true; openAudio(); }
+(function initAudioCanvas(){
+  const cv=document.getElementById('waveCanvas'); if(!cv) return;
+  cv.addEventListener('pointerdown', e=>{ e.preventDefault(); audioDrag=true; audioSetHandle(e.clientX); });
+  document.addEventListener('pointermove', e=>{ if(audioDrag){ e.preventDefault(); audioSetHandle(e.clientX); } });
+  document.addEventListener('pointerup', ()=>{ audioDrag=false; });
+})();
 db.auth.getSession().then(({data}) => {
   user = data.session ? data.session.user : null;
   updateAuthUI();
