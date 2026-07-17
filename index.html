@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="theme-color" content="#2d5a3d">
+<meta name="theme-color" content="#f7f3e8">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Bask</title>
@@ -20,13 +20,15 @@ html,body{height:100%}
 body{font-family:Georgia,'Times New Roman',serif;background:var(--cream);color:var(--ink);
   -webkit-font-smoothing:antialiased;overscroll-behavior:none}
 button,input,select,textarea{font-family:inherit;font-size:1rem}
-header{background:var(--green-dark);color:var(--cream);padding:14px 16px 12px;
+header{background:var(--cream);color:var(--ink);padding:9px 14px;
   display:flex;align-items:center;justify-content:space-between;
-  position:sticky;top:0;z-index:1000}
-header h1{font-size:1.25rem;font-weight:normal;font-style:italic;letter-spacing:.5px}
-header h1 span{font-style:normal;font-size:.75rem;opacity:.75;display:block;letter-spacing:1px}
-.lang-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);
-  color:var(--cream);border-radius:20px;padding:5px 12px;font-size:.85rem;cursor:pointer}
+  position:sticky;top:0;z-index:1000;border-bottom:1px solid var(--line)}
+.app-logo svg{height:34px;width:auto;display:block}
+.auth-logo-wrap{text-align:center;margin:44px 0 24px}
+.auth-logo-wrap svg{height:58px;width:auto;margin:0 auto;display:block}
+.lang-btn{background:none;border:1px solid var(--line);border-radius:8px;padding:3px 6px;
+  cursor:pointer;line-height:0;display:inline-flex;align-items:center}
+.lang-btn svg{height:18px;width:auto;border-radius:2px;display:block;overflow:hidden}
 main{padding-bottom:74px;min-height:calc(100% - 60px)}
 .view{display:none;padding:16px;max-width:640px;margin:0 auto}
 .view.active{display:block}
@@ -52,6 +54,13 @@ nav button.active{color:var(--green-dark);font-weight:bold}
 .avatar svg{width:32px;height:32px}
 .avatar.sm{width:38px;height:38px}.avatar.sm svg{width:23px;height:23px}
 .tl-item{display:flex;gap:12px;align-items:flex-start}
+.tl-left{display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
+.tl-actions{display:flex;gap:6px}
+.tl-icon-btn{width:30px;height:30px;border-radius:8px;border:1px solid var(--line);background:var(--card);cursor:pointer;font-size:.85rem;line-height:1;display:flex;align-items:center;justify-content:center;padding:0}
+.tl-top{display:flex;align-items:center;gap:8px}
+.author-badge{margin-left:auto;font-size:.72rem;font-weight:bold;border-radius:12px;padding:2px 10px;white-space:nowrap}
+.author-you{background:var(--green);color:#fff}
+.author-friend{background:var(--cream-dark);color:var(--green-dark)}
 .tl-date{font-size:.72rem;color:var(--ink-soft);letter-spacing:.4px;text-transform:uppercase}
 .tl-name{font-weight:bold;color:var(--green-dark)}
 .tl-latin{font-style:italic;font-size:.82rem;color:var(--ink-soft)}
@@ -186,10 +195,9 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
 
 <!-- AUTH -->
 <section id="authView">
-  <button class="lang-btn auth-lang" onclick="toggleLang()">Dansk</button>
+  <button class="lang-btn auth-lang" onclick="toggleLang()" id="langBtnAuth"></button>
   <div class="auth-box">
-    <div class="auth-logo">Bask</div>
-    <div class="auth-tag" data-i18n="tagline"></div>
+    <div class="auth-logo-wrap"><svg class="bask-logo" viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg"><path d="M104 52 C80 20 58 2 40 8 C56 16 58 44 82 66 C90 60 98 56 104 52 Z" fill="#4b3f36"/><circle cx="106" cy="110" r="76" fill="#4b3f36"/><circle cx="104" cy="128" r="64" fill="#b7bcc4"/><circle cx="128" cy="120" r="56" fill="#b5641c"/><circle cx="140" cy="108" r="6" fill="#141414"/><path d="M176 120 L196 125 L176 131 Z" fill="#141414"/><text x="215" y="162" font-family="'Century Gothic','Questrial','Segoe UI',sans-serif" font-weight="300" font-size="150" letter-spacing="-3" fill="#141414">bask</text></svg></div>
     <div class="card">
       <label class="fld" style="margin-top:0" data-i18n="email"></label>
       <input type="email" id="authEmail" autocomplete="email">
@@ -207,17 +215,18 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
 <!-- APP -->
 <div id="appShell">
 <header>
-  <h1>Bask <span data-i18n="tagline"></span></h1>
-  <button class="lang-btn" onclick="toggleLang()" id="langBtnHdr">Dansk</button>
+  <span class="app-logo"><svg class="bask-logo" viewBox="0 0 640 210" xmlns="http://www.w3.org/2000/svg"><path d="M104 52 C80 20 58 2 40 8 C56 16 58 44 82 66 C90 60 98 56 104 52 Z" fill="#4b3f36"/><circle cx="106" cy="110" r="76" fill="#4b3f36"/><circle cx="104" cy="128" r="64" fill="#b7bcc4"/><circle cx="128" cy="120" r="56" fill="#b5641c"/><circle cx="140" cy="108" r="6" fill="#141414"/><path d="M176 120 L196 125 L176 131 Z" fill="#141414"/><text x="215" y="162" font-family="'Century Gothic','Questrial','Segoe UI',sans-serif" font-weight="300" font-size="150" letter-spacing="-3" fill="#141414">bask</text></svg></span>
+  <button class="lang-btn" onclick="toggleLang()" id="langBtnHdr"></button>
 </header>
 
 <main>
   <section class="view active" id="view-observations">
-    <h2 data-i18n="observations"></h2>
+    <h2 data-i18n="newObservation"></h2>
     <div class="photo-row" style="margin-top:8px;margin-bottom:14px">
       <button class="btn btn-primary" style="margin-top:0;flex:1" onclick="startCameraSighting()">📷 <span data-i18n="takePhoto"></span></button>
       <button class="btn btn-secondary" style="flex:1" onclick="startManualSighting()">✏️ <span data-i18n="addManually"></span></button>
     </div>
+    <h2 data-i18n="feed" style="margin-top:20px"></h2>
     <div id="timelineList"></div>
   </section>
 
@@ -640,7 +649,7 @@ const I18N = {
   useMyLocation:'My location', locHint:'Tap the button, then fine-tune by dragging the pin.',
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
-  save:'Save sighting', observations:'Observations', addManually:'Add manually', cancel:'Cancel', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
+  save:'Save sighting', observations:'Observations', newObservation:'New observation', feed:'Feed', addManually:'Add manually', cancel:'Cancel', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
   congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo',
   people:'People', peopleSub:'Find watchers and send friend requests to view their sightings.', searchName:'Search by name…', addFriend:'Add friend', removeFriend:'Remove', friendsList:'Your friends', noFriends:'No friends yet — search by name above.', noResults:'No users found.', publicOnly:'public only', noPublic:'No sightings yet.', propertyBirds:'property birds', requests:'Friend requests', accept:'Accept', decline:'Decline', viewProfile:'View', requestPending:'Request sent', requestSent:'Friend request sent', nowFriends:'You are now friends',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
@@ -683,7 +692,7 @@ const I18N = {
   useMyLocation:'Min lokation', locHint:'Tryk på knappen og finjustér ved at trække i nålen.',
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
-  save:'Gem observation', observations:'Observationer', addManually:'Tilføj manuelt', cancel:'Annullér', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
+  save:'Gem observation', observations:'Observationer', newObservation:'Ny observation', feed:'Feed', addManually:'Tilføj manuelt', cancel:'Annullér', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
   congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto',
   people:'Personer', peopleSub:'Find fuglekiggere og send venneanmodninger for at se deres observationer.', searchName:'Søg efter navn…', addFriend:'Tilføj ven', removeFriend:'Fjern', friendsList:'Dine venner', noFriends:'Ingen venner endnu — søg efter navn ovenfor.', noResults:'Ingen brugere fundet.', publicOnly:'kun offentlige', noPublic:'Ingen observationer endnu.', propertyBirds:'matrikelfugle', requests:'Venneanmodninger', accept:'Acceptér', decline:'Afvis', viewProfile:'Se', requestPending:'Anmodning sendt', requestSent:'Venneanmodning sendt', nowFriends:'I er nu venner',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
@@ -717,9 +726,13 @@ const I18N = {
 };
 let lang = store.get('lang','en');
 const t = k => (I18N[lang][k] !== undefined ? I18N[lang][k] : k);
+const FLAGS = {
+  en:'<svg viewBox="0 0 60 30" xmlns="http://www.w3.org/2000/svg"><rect width="60" height="30" fill="#012169"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#fff" stroke-width="7"/><path d="M0,0 L60,30 M60,0 L0,30" stroke="#C8102E" stroke-width="4"/><rect x="25" width="10" height="30" fill="#fff"/><rect y="10" width="60" height="10" fill="#fff"/><rect x="27" width="6" height="30" fill="#C8102E"/><rect y="12" width="60" height="6" fill="#C8102E"/></svg>',
+  da:'<svg viewBox="0 0 37 28" xmlns="http://www.w3.org/2000/svg"><rect width="37" height="28" fill="#c8102e"/><rect x="12" width="5" height="28" fill="#fff"/><rect y="11.5" width="37" height="5" fill="#fff"/></svg>'
+};
 function applyLang(){
   document.documentElement.lang = lang;
-  document.querySelectorAll('.lang-btn').forEach(b => b.textContent = lang === 'en' ? 'Dansk' : 'English');
+  document.querySelectorAll('.lang-btn').forEach(b => b.innerHTML = FLAGS[lang]);
   document.querySelectorAll('[data-i18n]').forEach(el => { el.textContent = t(el.dataset.i18n); });
   document.querySelectorAll('[data-i18n-ph]').forEach(el => { el.placeholder = t(el.dataset.i18nPh); });
   setAuthMode(authMode);
@@ -1078,7 +1091,19 @@ async function loadFriendData(){
   frRows = data || [];
   await loadNames([...new Set(frRows.map(r=>r.from_user===user.id?r.to_user:r.from_user))]);
   renderNav();
+  loadFeed();
   if(currentView==='people') searchPeople();
+}
+var friendSightings = [];
+async function loadFeed(){
+  const fids = (typeof friendIds==='function') ? friendIds() : [];
+  if(!user || !fids.length){ friendSightings=[]; renderTimeline(); return; }
+  const { data } = await db.from('sightings')
+    .select('id,user_id,bird_id,seen_at,lat,lng,notes,photo_path,is_matrikelfugl,is_public')
+    .in('user_id', fids).order('seen_at',{ascending:false}).limit(300);
+  friendSightings = data || [];
+  await loadNames(fids);
+  renderTimeline();
 }
 function friendIds(){ return [...new Set(frRows.filter(r=>r.status==='accepted').map(r=>r.from_user===user.id?r.to_user:r.from_user))]; }
 function incomingRequests(){ return frRows.filter(r=>r.status==='pending' && r.to_user===user.id); }
@@ -1259,28 +1284,39 @@ function escapeHtml(s){ const d = document.createElement('div'); d.textContent =
 function renderTimeline(){
   const el = document.getElementById('timelineList');
   if (!el) return;
-  if (!sightings.length){ el.innerHTML = `<div class="empty">${t('emptyTimeline')}</div>`; return; }
-  el.innerHTML = sightings.map(s => {
+  const feed = sightings.map(s => ({s, own:true})).concat((friendSightings||[]).map(s => ({s, own:false})));
+  if (!feed.length){ el.innerHTML = `<div class="empty">${t('emptyTimeline')}</div>`; return; }
+  feed.sort((a,b) => (b.s.seen_at||'').localeCompare(a.s.seen_at||''));
+  el.innerHTML = feed.map(({s, own}) => {
     const b = birdById(s.bird_id); if (!b) return '';
-    return `<div class="card tl-item">
-      ${avatarHTML(b)}
-      <div style="flex:1;min-width:0">
-        <div style="display:flex;align-items:baseline;gap:8px">
-          <div class="tl-date">${fmtDate(s.seen_at)}</div>
-          <button class="del-btn" style="color:var(--green-dark);text-decoration:none" onclick="editSighting('${s.id}')">${t('edit')}</button>
-          <button class="del-btn" onclick="deleteSighting('${s.id}')">${t('del')}</button>
-        </div>
-        <div class="tl-name">${b.name[lang]}</div>
-        <div class="tl-latin">${b.latin}</div>
-        ${s.notes ? `<div class="tl-note">${escapeHtml(s.notes)}</div>` : ''}
-        ${photoThumbHTML(s.photo_path, b.name[lang], 'tl-photo')}
-        <div class="tl-meta">
+    const author = own
+      ? `<span class="author-badge author-you">${t('you')}</span>`
+      : `<span class="author-badge author-friend">${escapeHtml(profileNames[s.user_id]||'…')}</span>`;
+    const avatar = own ? avatarHTML(b) : genericAvatar(b);
+    const actions = own ? `<div class="tl-actions">
+        <button class="tl-icon-btn" onclick="editSighting('${s.id}')" title="${t('edit')}">✏️</button>
+        <button class="tl-icon-btn" onclick="deleteSighting('${s.id}')" title="${t('del')}">🗑️</button></div>` : '';
+    const meta = own
+      ? `<div class="tl-meta">
           <span class="chip">📍 ${s.lat.toFixed(4)}, ${s.lng.toFixed(4)}</span>
           ${s.matrikel_label ? `<span class="chip">🏠 ${escapeHtml(s.matrikel_label)}</span>` : ''}
           ${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}
           ${s.is_public ? `<span class="chip pub">${t('community')}</span>` : ''}
           ${s.photo_path ? `<button class="del-btn" style="color:var(--green-dark);text-decoration:none" onclick="iconFromSighting('${s.id}')">🖼️ ${t('setIcon')}</button>` : ''}
+        </div>`
+      : `<div class="tl-meta">${s.is_matrikelfugl ? `<span class="chip pub">🏡 ${t('mfChip')}</span>` : ''}</div>`;
+    return `<div class="card tl-item">
+      <div class="tl-left">${avatar}${actions}</div>
+      <div style="flex:1;min-width:0">
+        <div class="tl-top">
+          <div class="tl-date">${fmtDate(s.seen_at)}</div>
+          ${author}
         </div>
+        <div class="tl-name">${b.name[lang]}</div>
+        <div class="tl-latin">${b.latin}</div>
+        ${s.notes ? `<div class="tl-note">${escapeHtml(s.notes)}</div>` : ''}
+        ${photoThumbHTML(s.photo_path, b.name[lang], 'tl-photo')}
+        ${meta}
       </div>
     </div>`;
   }).join('');
