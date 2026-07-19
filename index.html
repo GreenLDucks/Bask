@@ -42,6 +42,7 @@ body.dark .auth-logo-wrap{background:#f4efe3;border-radius:18px;padding:10px 6px
 .audio-sheet{width:100%;max-width:600px;color:#f7f3e8;text-align:center}
 .audio-timer{font-size:2rem;color:#f7f3e8;margin:10px 0 16px;font-variant-numeric:tabular-nums}
 #waveCanvas{width:100%;height:120px;border-radius:10px;background:#26271f;display:block;touch-action:none;margin-bottom:10px}
+#liveCanvas{width:100%;height:70px;border-radius:10px;background:#26271f;display:block;margin-bottom:16px}
 *{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%}
 body{font-family:Georgia,'Times New Roman',serif;background:var(--cream);color:var(--ink);
@@ -423,7 +424,7 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
 <div id="friendModal" onclick="closeFriend()"><div class="mat-sheet" onclick="event.stopPropagation()"><button class="mat-close" onclick="closeFriend()">✕</button><div id="friendContent"></div></div></div>
 <div id="onboardModal"><div class="onboard-card"><div id="onboardBody"></div><div class="onboard-nav"><button class="btn btn-secondary" onclick="onboardSkip()" data-i18n="skip"></button><button class="btn btn-primary" style="margin-top:0" onclick="onboardNext()" id="onboardNextBtn"></button></div></div></div>
 <div id="audioModal"><div class="audio-sheet">
-  <div id="audioStep1"><div class="audio-timer" id="audioTimer">0:00</div><button class="btn btn-primary" id="recBtn" onclick="toggleRecord()" style="margin-top:0"></button></div>
+  <div id="audioStep1"><div class="audio-timer" id="audioTimer">0:00</div><canvas id="liveCanvas" width="600" height="70"></canvas><button class="btn btn-primary" id="recBtn" onclick="toggleRecord()" style="margin-top:0"></button></div>
   <div id="audioStep2" style="display:none">
     <canvas id="waveCanvas" width="600" height="120"></canvas>
     <div class="crop-hint" data-i18n="audioTrimHint"></div>
@@ -1399,6 +1400,7 @@ let selectedBird = null, logLatLng = null, logPhoto = null;
 let editingId = null, editPhotoPath = null, removePhotoFlag = false, cameraFlowPending = false;
 let logAudio = null, editAudioPath = null, removeAudioFlag = false, audioFlowPending = false;
 var mediaRecorder=null, audioChunks=[], recordedBlob=null, recStartTime=0, recTimer=null, audioCtx=null, decodedBuffer=null, trimStart=0, trimEnd=1, previewSource=null, audioDrag=false;
+var micSource=null, analyser=null, liveRaf=null, playRaf=null, playCursor=null;
 let miniMap = null, miniMarker = null;
 let speciesFilter = '';
 function foldText(s){ return s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/æ/g,'ae').replace(/ø/g,'o').replace(/å/g,'a'); }
@@ -1989,13 +1991,15 @@ function openAudio(){
   document.getElementById('audioUseBtn').style.display='none';
   document.getElementById('audioTimer').textContent='0:00';
   document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
-  decodedBuffer=null; recordedBlob=null;
+  decodedBuffer=null; recordedBlob=null; playCursor=null;
+  { const lc=document.getElementById('liveCanvas'); if(lc){ const c=lc.getContext('2d'); c.fillStyle='#26271f'; c.fillRect(0,0,lc.width,lc.height); c.strokeStyle='#4a4d3e'; c.lineWidth=1; c.beginPath(); c.moveTo(0,lc.height/2); c.lineTo(lc.width,lc.height/2); c.stroke(); } }
   document.getElementById('audioModal').classList.add('show'); lockScroll(true);
 }
 function closeAudio(){
   try{ if(mediaRecorder && mediaRecorder.state==='recording') mediaRecorder.stop(); }catch(e){}
   try{ if(previewSource) previewSource.stop(); }catch(e){}
-  clearInterval(recTimer);
+  clearInterval(recTimer); cancelAnimationFrame(liveRaf); cancelAnimationFrame(playRaf); playCursor=null;
+  try{ if(micSource) micSource.disconnect(); }catch(e){} micSource=null; analyser=null;
   document.getElementById('audioModal').classList.remove('show'); lockScroll(false);
 }
 async function toggleRecord(){
@@ -2003,11 +2007,13 @@ async function toggleRecord(){
   try{
     const stream=await navigator.mediaDevices.getUserMedia({audio:true});
     audioChunks=[];
+    audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
+    try{ micSource=audioCtx.createMediaStreamSource(stream); analyser=audioCtx.createAnalyser(); analyser.fftSize=1024; micSource.connect(analyser); drawLive(); }catch(e){}
     mediaRecorder=new MediaRecorder(stream);
     mediaRecorder.ondataavailable=e=>{ if(e.data && e.data.size) audioChunks.push(e.data); };
     mediaRecorder.onstop=async ()=>{
       stream.getTracks().forEach(tr=>tr.stop());
-      clearInterval(recTimer);
+      clearInterval(recTimer); cancelAnimationFrame(liveRaf); try{ if(micSource) micSource.disconnect(); }catch(e){} micSource=null; analyser=null;
       recordedBlob=new Blob(audioChunks, {type:(mediaRecorder && mediaRecorder.mimeType) || 'audio/webm'});
       try{ await decodeRecorded(); }catch(e){ toast(t('micErr')); return; }
       document.getElementById('audioStep1').style.display='none';
@@ -2026,6 +2032,22 @@ async function decodeRecorded(){
   decodedBuffer=await audioCtx.decodeAudioData(ab);
   trimStart=0; trimEnd=1; drawWave();
 }
+function drawLive(){
+  const cv=document.getElementById('liveCanvas'); if(!cv||!analyser) return;
+  const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
+  const N=analyser.fftSize; const buf=new Uint8Array(N);
+  const loop=()=>{
+    if(!analyser){ return; }
+    analyser.getByteTimeDomainData(buf);
+    ctx.fillStyle='#26271f'; ctx.fillRect(0,0,W,H);
+    ctx.lineWidth=2; ctx.strokeStyle='#8fc79f'; ctx.beginPath();
+    const step=N/W;
+    for(let x=0;x<W;x++){ const v=(buf[Math.floor(x*step)]-128)/128; const y=(1-(v+1)/2)*H; x===0?ctx.moveTo(x,y):ctx.lineTo(x,y); }
+    ctx.stroke();
+    liveRaf=requestAnimationFrame(loop);
+  };
+  loop();
+}
 function drawWave(){
   const cv=document.getElementById('waveCanvas'); if(!cv||!decodedBuffer) return;
   const ctx=cv.getContext('2d'); const W=cv.width, H=cv.height;
@@ -2037,6 +2059,7 @@ function drawWave(){
   const sx=trimStart*W, ex=trimEnd*W;
   ctx.fillStyle='rgba(20,22,16,.6)'; ctx.fillRect(0,0,sx,H); ctx.fillRect(ex,0,W-ex,H);
   ctx.strokeStyle='#c9a227'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(sx,0); ctx.lineTo(sx,H); ctx.moveTo(ex,0); ctx.lineTo(ex,H); ctx.stroke();
+  if(playCursor!=null){ const cx=Math.max(0,Math.min(1,playCursor))*W; ctx.strokeStyle='#f7f3e8'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(cx,0); ctx.lineTo(cx,H); ctx.stroke(); }
 }
 function audioSetHandle(clientX){
   const cv=document.getElementById('waveCanvas'); const rect=cv.getBoundingClientRect();
@@ -2049,8 +2072,19 @@ function playTrim(){
   if(!decodedBuffer) return;
   audioCtx=audioCtx||new (window.AudioContext||window.webkitAudioContext)();
   try{ if(previewSource) previewSource.stop(); }catch(e){}
+  cancelAnimationFrame(playRaf);
+  const dur=decodedBuffer.duration, st=trimStart*dur, len=Math.max(0.05,(trimEnd-trimStart)*dur);
   const src=audioCtx.createBufferSource(); src.buffer=decodedBuffer; src.connect(audioCtx.destination);
-  const dur=decodedBuffer.duration; src.start(0, trimStart*dur, Math.max(0.05,(trimEnd-trimStart)*dur)); previewSource=src;
+  src.start(0, st, len); previewSource=src;
+  const startCtx=audioCtx.currentTime;
+  src.onended=()=>{ playCursor=null; cancelAnimationFrame(playRaf); drawWave(); };
+  const loop=()=>{
+    const el=audioCtx.currentTime-startCtx;
+    if(el>=len){ playCursor=null; drawWave(); return; }
+    playCursor=trimStart + el/dur; drawWave();
+    playRaf=requestAnimationFrame(loop);
+  };
+  loop();
 }
 function reRecord(){
   document.getElementById('audioStep2').style.display='none';
@@ -2058,7 +2092,7 @@ function reRecord(){
   document.getElementById('audioUseBtn').style.display='none';
   document.getElementById('audioTimer').textContent='0:00';
   document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
-  decodedBuffer=null;
+  decodedBuffer=null; playCursor=null; cancelAnimationFrame(playRaf);
 }
 function useAudio(){
   if(!decodedBuffer) return;
