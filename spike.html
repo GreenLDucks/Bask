@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bask · BirdNET in-browser spike</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:720px;margin:20px auto;padding:0 14px;background:#f7f3e8;color:#2b2b23}
+h1{font-size:1.2rem}
+#log{white-space:pre-wrap;background:#23251d;color:#d7e6cf;padding:14px;border-radius:10px;font:13px/1.5 ui-monospace,monospace;min-height:260px}
+button,input{font-size:1rem;margin:6px 6px 6px 0}
+.k{color:#e3c832}.g{color:#8fc79f}.r{color:#e08a6a}
+</style>
+</head>
+<body>
+<h1>Bask · BirdNET in-browser feasibility spike</h1>
+<p>Loads BirdNET v2.4 (ONNX) in the browser, fetches a test bird recording, resamples to 48 kHz, runs inference, and prints top species + timing. You can also load your own clip.</p>
+<div>
+  <button id="runSample">Run with sample (robin)</button>
+  <input type="file" id="file" accept="audio/*">
+  <label>species: <input id="species" value="Erithacus rubecula" size="24"></label>
+</div>
+<div id="log">idle…</div>
+
+<script src="https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js"></script>
+<script>
+const MODEL='https://huggingface.co/tphakala/BirdNET-v2.4/resolve/main/BirdNET_v2.4_fp32.onnx';
+const LABELS='https://huggingface.co/tphakala/BirdNET-v2.4/resolve/main/labels.txt';
+const logEl=document.getElementById('log');
+let session=null, labels=null, io={};
+function log(msg,cls){ logEl.innerHTML += (cls?`<span class="${cls}">`:'')+msg+(cls?'</span>':'')+'\n'; window.__spikeLog=(window.__spikeLog||'')+msg+'\n'; }
+function reset(){ logEl.innerHTML=''; window.__spikeLog=''; }
+
+ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/';
+ort.env.wasm.numThreads=1;
+
+async function ensureModel(){
+  if(session) return;
+  const t0=performance.now();
+  log('Loading labels…');
+  labels=(await fetch(LABELS).then(r=>r.text())).split('\n').map(s=>s.trim()).filter(Boolean);
+  log('labels: '+labels.length+' classes  (e.g. '+labels[0]+')','g');
+  log('Loading model (~50 MB, one-time)…');
+  session=await ort.InferenceSession.create(MODEL, {executionProviders:['wasm']});
+  io.in=session.inputNames[0]; io.out=session.outputNames[0];
+  log('model loaded in '+((performance.now()-t0)/1000).toFixed(1)+' s','g');
+  log('input name: '+io.in+'   output name: '+io.out,'k');
+}
+
+async function decodeResample(arrayBuf){
+  const ac=new (window.AudioContext||window.webkitAudioContext)();
+  const decoded=await ac.decodeAudioData(arrayBuf);
+  log('decoded: '+decoded.duration.toFixed(2)+'s @ '+decoded.sampleRate+'Hz, '+decoded.numberOfChannels+'ch');
+  // resample to 48k mono
+  const off=new OfflineAudioContext(1, Math.ceil(decoded.duration*48000), 48000);
+  const src=off.createBufferSource(); src.buffer=decoded; src.connect(off.destination); src.start();
+  const rb=await off.startRendering();
+  return rb.getChannelData(0); // Float32 @48k
+}
+function loudestWindow(data, win){
+  if(data.length<=win){ const out=new Float32Array(win); out.set(data); return out; }
+  let best=0,bestRms=-1; const stride=Math.floor(48000*0.5);
+  for(let s=0;s+win<=data.length;s+=stride){ let e=0; for(let i=s;i<s+win;i+=64) e+=data[i]*data[i]; if(e>bestRms){bestRms=e;best=s;} }
+  return data.slice(best,best+win);
+}
+async function classify(arrayBuf){
+  await ensureModel();
+  const samples=await decodeResample(arrayBuf);
+  const win=144000; // 3s @48k
+  const clip=loudestWindow(samples, win);
+  const tensor=new ort.Tensor('float32', clip, [1, win]);
+  log('running inference…');
+  const t0=performance.now();
+  let out;
+  try{ out=await session.run({[io.in]: tensor}); }
+  catch(e){ log('inference with [1,144000] failed: '+e.message+' — retrying [144000]','r');
+           out=await session.run({[io.in]: new ort.Tensor('float32', clip, [win])}); }
+  const ms=performance.now()-t0;
+  const logits=out[io.out].data;
+  log('inference: '+ms.toFixed(0)+' ms   outputs: '+logits.length,'k');
+  // sigmoid + top 8
+  const scored=[];
+  for(let i=0;i<logits.length;i++){ const p=1/(1+Math.exp(-logits[i])); scored.push([i,p]); }
+  scored.sort((a,b)=>b[1]-a[1]);
+  log('\nTop predictions:','k');
+  for(let i=0;i<8;i++){ const [idx,p]=scored[i]; log('  '+(p*100).toFixed(1).padStart(5)+'%  '+labels[idx]); }
+}
+
+document.getElementById('runSample').onclick=async()=>{
+  reset();
+  try{
+    const q=document.getElementById('species').value.trim();
+    log('Finding a test recording for "'+q+'" on Wikimedia Commons…');
+    const api='https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrsearch='+encodeURIComponent(q)+'&gsrnamespace=6&gsrlimit=15&prop=imageinfo&iiprop=url|mime&format=json&origin=*';
+    const j=await fetch(api).then(r=>r.json());
+    const pages=Object.values((j.query&&j.query.pages)||{});
+    const audio=pages.map(p=>p.imageinfo&&p.imageinfo[0]).filter(x=>x&&/audio\//.test(x.mime||''));
+    if(!audio.length){ log('No audio file found for that species — try another name, or use the file picker.','r'); return; }
+    log('using: '+audio[0].url.split('/').pop());
+    const buf=await fetch(audio[0].url).then(r=>r.arrayBuffer());
+    await classify(buf);
+    log('\nDONE ✓','g');
+  }catch(e){ log('ERROR: '+e.message,'r'); }
+};
+document.getElementById('file').onchange=async(e)=>{
+  reset(); const f=e.target.files[0]; if(!f) return;
+  try{ log('file: '+f.name); await classify(await f.arrayBuffer()); log('\nDONE ✓','g'); }
+  catch(err){ log('ERROR: '+err.message,'r'); }
+};
+// auto-run
+window.addEventListener('load', ()=>document.getElementById('runSample').click());
+</script>
+</body>
+</html>
