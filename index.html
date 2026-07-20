@@ -429,6 +429,8 @@ body.no-scroll{overflow:hidden!important;overscroll-behavior:none;touch-action:n
     <canvas id="waveCanvas" width="600" height="120"></canvas>
     <div class="crop-hint" data-i18n="audioTrimHint"></div>
     <div class="crop-btns"><button class="btn btn-secondary" onclick="playTrim()" data-i18n="play"></button><button class="btn btn-secondary" onclick="reRecord()" data-i18n="reRecord"></button></div>
+    <button class="btn btn-primary" id="audioIdBtn" onclick="identifyBird()" style="margin-top:8px" data-i18n="identifyBird"></button>
+    <div id="audioIdResults" style="display:none;margin-top:8px"></div>
   </div>
   <div class="crop-btns"><button class="btn btn-secondary" onclick="closeAudio()" data-i18n="cropCancel"></button><button class="btn btn-primary" id="audioUseBtn" onclick="useAudio()" style="display:none;margin-top:0" data-i18n="useAudio"></button></div>
 </div></div>
@@ -710,7 +712,7 @@ const I18N = {
   photoOptional:'Photo (optional — but encouraged!)', takePhoto:'Camera', fromGallery:'Gallery',
   notes:'Notes (optional)', sharePublic:'Share this sighting on the public map (shown as species + location only)',
   save:'Save sighting', observations:'Observations', newObservation:'New observation', feed:'Feed', addManually:'Add manually', cancel:'Cancel', skip:'Skip', next:'Next', getStarted:'Get started', darkMode:'Dark mode', sexLabel:'Sex', sexUnknown:'Unknown', male:'♂ Male', female:'♀ Female', heardOnly:'Heard only (not seen)', heard:'Heard', onbTitle1:'Welcome to Bask', onbBody1:'Log the birds on your property. Add a sighting with a photo, a sound recording, or manually — everything appears in your Feed.', onbTitle2:'Matrikelfugl', onbBody2:'Set your home matrikel under Profile. Sightings on your property are automatically marked as “matrikelfugl” (property birds).', onbTitle3:'Friends', onbBody3:'Find other watchers under People and send a friend request. Once accepted, you can see each other’s sightings in your Feed.', guide:'Field guide', guideSub:'%n common Danish birds — search or tap one for details.', searchToStart:'Type in the search box to find a species.', seenProperty:'Seen on your property',
-  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo', recordSound:'Record sound', startRec:'Start recording', stopRec:'Stop', reRecord:'Re-record', play:'Play', useAudio:'Use sound', audioTrimHint:'Drag the gold handles to trim to the bird’s call.', removeAudio:'Remove sound', audioAdded:'Sound added ✓', micErr:'Could not access microphone.',
+  congrats:'Great shot! Sighting saved.', edit:'Edit', update:'Update sighting', updated:'Sighting updated ✓', cancelEditBtn:'Cancel edit', setIconFor:'Use as %s icon', setIcon:'Make icon', iconApply:'Set icon', iconHint:'Drag and resize the circle over the bird.', iconSaved:'Icon updated ✓', iconLoadErr:'Could not load photo.', done:'Done', capture:'Capture', nativeCamera:'Open native camera (full zoom)', removePhoto:'Remove photo', recordSound:'Record sound', startRec:'Start recording', stopRec:'Stop', reRecord:'Re-record', play:'Play', useAudio:'Use sound', audioTrimHint:'Drag the gold handles to trim to the bird’s call.', removeAudio:'Remove sound', audioAdded:'Sound added ✓', micErr:'Could not access microphone.', identifyBird:'🔍 Identify bird', identifying:'Listening…', idHint:'Tap a suggestion to set the species.', idNoResult:'No confident match — try trimming closer to the call.', idErr:'Could not load the sound model.', idPicked:'Species set ✓',
   people:'People', peopleSub:'Find watchers and send friend requests to view their sightings.', searchName:'Search by name…', addFriend:'Add friend', removeFriend:'Remove', friendsList:'Your friends', noFriends:'No friends yet — search by name above.', noResults:'No users found.', publicOnly:'public only', noPublic:'No sightings yet.', propertyBirds:'property birds', requests:'Friend requests', accept:'Accept', decline:'Decline', viewProfile:'View', requestPending:'Request sent', requestSent:'Friend request sent', nowFriends:'You are now friends',
   badges:'Badges', badgesSub:'Rewards for your growing life list.',
   milestoneBadges:'Milestones', speciesBadges:'Species badges',
@@ -753,7 +755,7 @@ const I18N = {
   photoOptional:'Foto (valgfrit — men opfordret!)', takePhoto:'Kamera', fromGallery:'Galleri',
   notes:'Noter (valgfrit)', sharePublic:'Del denne observation på det offentlige kort (vises kun som art + sted)',
   save:'Gem observation', observations:'Observationer', newObservation:'Ny observation', feed:'Feed', addManually:'Tilføj manuelt', cancel:'Annullér', skip:'Spring over', next:'Næste', getStarted:'Kom i gang', darkMode:'Mørk tilstand', sexLabel:'Køn', sexUnknown:'Ukendt', male:'♂ Han', female:'♀ Hun', heardOnly:'Kun hørt (ikke set)', heard:'Hørt', onbTitle1:'Velkommen til Bask', onbBody1:'Registrér fuglene på din grund. Tilføj en observation med foto, lydoptagelse eller manuelt — alt vises i dit Feed.', onbTitle2:'Matrikelfugl', onbBody2:'Vælg din hjemmematrikel under Profil. Observationer på din grund markeres automatisk som “matrikelfugl”.', onbTitle3:'Venner', onbBody3:'Find andre fuglekiggere under Personer og send en venneanmodning. Når den accepteres, kan I se hinandens observationer i dit Feed.', guide:'Felthåndbog', guideSub:'%n almindelige danske fugle — søg eller tryk på én for detaljer.', searchToStart:'Skriv i søgefeltet for at finde en art.', seenProperty:'Set på din matrikel',
-  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto', recordSound:'Optag lyd', startRec:'Start optagelse', stopRec:'Stop', reRecord:'Optag igen', play:'Afspil', useAudio:'Brug lyd', audioTrimHint:'Træk i de gyldne håndtag for at beskære til fuglens kald.', removeAudio:'Fjern lyd', audioAdded:'Lyd tilføjet ✓', micErr:'Kunne ikke få adgang til mikrofon.',
+  congrats:'Flot skud! Observation gemt.', edit:'Redigér', update:'Opdatér observation', updated:'Observation opdateret ✓', cancelEditBtn:'Annullér redigering', setIconFor:'Brug som ikon for %s', setIcon:'Lav ikon', iconApply:'Vælg ikon', iconHint:'Træk og tilpas cirklen over fuglen.', iconSaved:'Ikon opdateret ✓', iconLoadErr:'Kunne ikke hente foto.', done:'Færdig', capture:'Tag billede', nativeCamera:'Åbn systemkamera (fuld zoom)', removePhoto:'Fjern foto', recordSound:'Optag lyd', startRec:'Start optagelse', stopRec:'Stop', reRecord:'Optag igen', play:'Afspil', useAudio:'Brug lyd', audioTrimHint:'Træk i de gyldne håndtag for at beskære til fuglens kald.', removeAudio:'Fjern lyd', audioAdded:'Lyd tilføjet ✓', micErr:'Kunne ikke få adgang til mikrofon.', identifyBird:'🔍 Identificér fugl', identifying:'Lytter…', idHint:'Tryk på et forslag for at vælge arten.', idNoResult:'Intet sikkert match — prøv at beskære tættere på kaldet.', idErr:'Kunne ikke indlæse lydmodellen.', idPicked:'Art valgt ✓',
   people:'Personer', peopleSub:'Find fuglekiggere og send venneanmodninger for at se deres observationer.', searchName:'Søg efter navn…', addFriend:'Tilføj ven', removeFriend:'Fjern', friendsList:'Dine venner', noFriends:'Ingen venner endnu — søg efter navn ovenfor.', noResults:'Ingen brugere fundet.', publicOnly:'kun offentlige', noPublic:'Ingen observationer endnu.', propertyBirds:'matrikelfugle', requests:'Venneanmodninger', accept:'Acceptér', decline:'Afvis', viewProfile:'Se', requestPending:'Anmodning sendt', requestSent:'Venneanmodning sendt', nowFriends:'I er nu venner',
   badges:'Emblemer', badgesSub:'Belønninger for din voksende artsliste.',
   milestoneBadges:'Milepæle', speciesBadges:'Artsemblemer',
@@ -1991,7 +1993,7 @@ function openAudio(){
   document.getElementById('audioUseBtn').style.display='none';
   document.getElementById('audioTimer').textContent='0:00';
   document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
-  decodedBuffer=null; recordedBlob=null; playCursor=null;
+  decodedBuffer=null; recordedBlob=null; playCursor=null; _resetIdUI();
   { const lc=document.getElementById('liveCanvas'); if(lc){ const c=lc.getContext('2d'); c.fillStyle='#26271f'; c.fillRect(0,0,lc.width,lc.height); c.strokeStyle='#4a4d3e'; c.lineWidth=1; c.beginPath(); c.moveTo(0,lc.height/2); c.lineTo(lc.width,lc.height/2); c.stroke(); } }
   document.getElementById('audioModal').classList.add('show'); lockScroll(true);
 }
@@ -2092,7 +2094,7 @@ function reRecord(){
   document.getElementById('audioUseBtn').style.display='none';
   document.getElementById('audioTimer').textContent='0:00';
   document.getElementById('recBtn').textContent='🎙️ '+t('startRec');
-  decodedBuffer=null; playCursor=null; cancelAnimationFrame(playRaf);
+  decodedBuffer=null; playCursor=null; cancelAnimationFrame(playRaf); _resetIdUI();
 }
 function useAudio(){
   if(!decodedBuffer) return;
@@ -2126,6 +2128,58 @@ function bufferToWavTrimmed(buffer, s, e){
   return new Blob([ab], {type:'audio/wav'});
 }
 function startAudioSighting(){ resetNewSightingForm(); document.getElementById('logHeard').checked=true; audioFlowPending=true; openAudio(); }
+/* ===== bird sound identification: Perch embedder (fp16 ONNX) + Danish linear head ===== */
+let perchSession=null, perchHead=null, perchLoading=null;
+function _half2f(h){ const s=(h&0x8000)>>15, e=(h&0x7C00)>>10, f=h&0x03FF; if(e===0) return (s?-1:1)*Math.pow(2,-14)*(f/1024); if(e===0x1F) return f?NaN:(s?-Infinity:Infinity); return (s?-1:1)*Math.pow(2,e-15)*(1+f/1024); }
+function _f16b64(b64,len){ const bin=atob(b64), u8=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i); const dv=new DataView(u8.buffer), out=new Float32Array(len); for(let i=0;i<len;i++)out[i]=_half2f(dv.getUint16(i*2,true)); return out; }
+function _loadOrt(){ return new Promise((res,rej)=>{ if(window.ort) return res(); const s=document.createElement('script'); s.src='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/ort.min.js'; s.onload=()=>{ ort.env.wasm.wasmPaths='https://cdn.jsdelivr.net/npm/onnxruntime-web@1.19.2/dist/'; ort.env.wasm.numThreads=1; res(); }; s.onerror=()=>rej(new Error('ort')); document.head.appendChild(s); }); }
+function loadPerch(){
+  if(perchSession && perchHead) return Promise.resolve();
+  if(perchLoading) return perchLoading;
+  perchLoading=(async()=>{
+    await _loadOrt();
+    perchSession=await ort.InferenceSession.create('./perch_embed_fp16.onnx',{executionProviders:['wasm'],graphOptimizationLevel:'basic'});
+    const h=await fetch('./perch_head.json').then(r=>r.json());
+    perchHead={species:h.species, dim:h.dim, K:h.nclass, W:_f16b64(h.W_b64,h.nclass*h.dim), b:_f16b64(h.b_b64,h.nclass)};
+  })();
+  return perchLoading;
+}
+function _resample32k(buffer,s,e){
+  const sr=buffer.sampleRate, data=buffer.getChannelData(0);
+  const si=Math.floor(s*data.length), ei=Math.floor(e*data.length), len=Math.max(1,ei-si), dur=len/sr;
+  const off=new OfflineAudioContext(1, Math.max(1,Math.ceil(dur*32000)), 32000);
+  const tmp=off.createBuffer(1,len,sr); tmp.getChannelData(0).set(data.subarray(si,ei));
+  const src=off.createBufferSource(); src.buffer=tmp; src.connect(off.destination); src.start();
+  return off.startRendering().then(rb=>rb.getChannelData(0));
+}
+function _peak(x){ let m=1e-9; for(let i=0;i<x.length;i++){const a=Math.abs(x[i]); if(a>m)m=a;} const g=1/m,o=new Float32Array(x.length); for(let i=0;i<x.length;i++)o[i]=x[i]*g; return o; }
+async function _embed(win){ const t=new ort.Tensor('float32',win,[1,160000]); const out=await perchSession.run({[perchSession.inputNames[0]]:t}); const v=out['embedding'].data; let s=0; for(let i=0;i<v.length;i++)s+=v[i]*v[i]; s=Math.sqrt(s)+1e-9; const o=new Float32Array(v.length); for(let i=0;i<v.length;i++)o[i]=v[i]/s; return o; }
+function _probs(emb){ const {W,b,K,dim}=perchHead, lg=new Float32Array(K); for(let k=0;k<K;k++){ let a=b[k], base=k*dim; for(let d=0;d<dim;d++)a+=W[base+d]*emb[d]; lg[k]=a; } let mx=-Infinity; for(let k=0;k<K;k++)if(lg[k]>mx)mx=lg[k]; let sum=0; const p=new Float32Array(K); for(let k=0;k<K;k++){ p[k]=Math.exp(lg[k]-mx); sum+=p[k]; } for(let k=0;k<K;k++)p[k]/=sum; return p; }
+async function identifyBird(){
+  if(!decodedBuffer) return;
+  const btn=document.getElementById('audioIdBtn'), res=document.getElementById('audioIdResults');
+  const orig=btn.textContent; btn.disabled=true; btn.textContent=t('identifying');
+  res.style.display='block'; res.innerHTML='<div class="crop-hint">'+t('identifying')+'</div>';
+  try{
+    await loadPerch();
+    const sig=await _resample32k(decodedBuffer,trimStart,trimEnd);
+    const WIN=160000, HOP=80000, K=perchHead.K, agg=new Float32Array(K); let nWin=0;
+    for(let start=0; start<Math.max(1,sig.length); start+=HOP){
+      const win=new Float32Array(WIN); win.set(sig.subarray(start,start+WIN));
+      const p=_probs(await _embed(_peak(win)));
+      for(let k=0;k<K;k++)agg[k]+=p[k]; nWin++;
+      if(start+WIN>=sig.length) break;
+    }
+    for(let k=0;k<K;k++)agg[k]/=Math.max(1,nWin);
+    const order=Array.from(agg.keys()).sort((a,b)=>agg[b]-agg[a]);
+    const rows=[]; let shown=0;
+    for(const k of order){ const bird=BIRDS.find(x=>x.latin===perchHead.species[k]); if(!bird)continue; const pct=Math.round(agg[k]*100); rows.push(`<div class="sp-opt" onclick="pickIdentified('${bird.id}',this)">${avatarHTML(bird,'sm')}<span>${bird.name[lang]}</span><span style="margin-left:auto;font-weight:700;color:#c9a227">${pct}%</span></div>`); if(++shown>=5)break; }
+    res.innerHTML = rows.length ? ('<div class="crop-hint">'+t('idHint')+'</div>'+rows.join('')) : ('<div class="crop-hint">'+t('idNoResult')+'</div>');
+  }catch(e){ res.innerHTML='<div class="crop-hint">'+t('idErr')+'</div>'; }
+  btn.disabled=false; btn.textContent=orig;
+}
+function pickIdentified(id,el){ selectBird(id); document.querySelectorAll('#audioIdResults .sp-opt').forEach(x=>x.classList.remove('sel')); if(el)el.classList.add('sel'); toast(t('idPicked')); }
+function _resetIdUI(){ const r=document.getElementById('audioIdResults'); if(r){ r.style.display='none'; r.innerHTML=''; } const b=document.getElementById('audioIdBtn'); if(b){ b.disabled=false; b.textContent=t('identifyBird'); } }
 (function initAudioCanvas(){
   const cv=document.getElementById('waveCanvas'); if(!cv) return;
   cv.addEventListener('pointerdown', e=>{ e.preventDefault(); audioDrag=true; audioSetHandle(e.clientX); });

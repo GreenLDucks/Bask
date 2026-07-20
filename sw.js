@@ -1,6 +1,6 @@
-const CACHE = 'bask-v1';
+const CACHE = 'bask-v2';
 const ASSETS = [
-  './', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png',
+  './', './index.html', './manifest.webmanifest', './icon-192.png', './icon-512.png', './perch_head.json',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css',
   'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js',
   'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2'
